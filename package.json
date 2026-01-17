@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@turf/distance": "^7.3.2",
-    "@turf/helpers": "^7.3.2"
-  }
-}

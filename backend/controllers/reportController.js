@@ -10,7 +10,7 @@ const vertex_ai = new VertexAI({
     location: 'us-central1'
 });
 
-// --- FASTEST AVAILABLE MODEL ---
+
 // --- FASTEST AVAILABLE MODEL ---
 // Using Gemini 2.0 Flash (Version 001) for maximum speed
 const modelName = 'gemini-2.0-flash-001';
@@ -20,7 +20,7 @@ const generativeModel = vertex_ai.getGenerativeModel({
     model: modelName,
     generationConfig: {
         maxOutputTokens: 2048,
-        temperature: 0.0, // Zero creativity for strict rule following
+        temperature: 0.0,
     },
 });
 
@@ -392,6 +392,17 @@ exports.updateReportStatus = async (req, res) => {
         if (targetPhone) {
             const { sendMessage } = require('./whatsappController');
             await sendMessage(targetPhone, `ℹ️ Report Update: ${status}\nID: ${reportId.slice(-6).toUpperCase()}`);
+        }
+
+        // NEW: Automated Broadcast on Human/Admin Verification
+        const verifiedStatuses = ['verified', 'accepted'];
+        if (verifiedStatuses.includes(status.toLowerCase())) {
+            const { broadcastTargetedAlert } = require('./whatsappController');
+            const area = report.location?.address || report.type;
+            const alertMsg = `📢 *VERIFIED CIVIC ALERT*\n\n📍 ${area}\n⚠️ Issue: ${report.type}\n\nStatus: ✅ ${status.toUpperCase()}\n_Keep a safe distance or take precautions._`;
+
+            await broadcastTargetedAlert(area, alertMsg);
+            console.log(`[Admin] Triggered area broadcast for verified report: ${reportId}`);
         }
 
         res.status(200).json({ message: "Status updated successfully" });

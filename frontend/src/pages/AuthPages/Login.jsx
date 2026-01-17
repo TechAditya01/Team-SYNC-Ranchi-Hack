@@ -43,9 +43,6 @@ export default function Login() {
             const cleanEmail = email.trim();
             const cleanPassword = password.trim();
 
-            // Debugging: Log what we are sending
-            console.log(`[Login] Attempting login for: '${cleanEmail}' (Password length: ${cleanPassword.length})`);
-
             // 1. Verify credentials with Firebase Auth
             const userCredential = await login(cleanEmail, cleanPassword);
             const uid = userCredential.user.uid;

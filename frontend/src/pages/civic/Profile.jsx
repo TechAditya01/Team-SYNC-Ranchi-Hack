@@ -1,8 +1,9 @@
 import React from 'react';
-import { User, Mail, Phone, MapPin, Edit2, LogOut, Settings as SettingsIcon, Shield, ChevronRight, BarChart, Star, Trash2, Zap } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Edit2, LogOut, Settings as SettingsIcon, Shield, ChevronRight, BarChart, Star, Trash2, Zap, Upload, Camera, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CivicLayout from './CivicLayout';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 import { getDatabase, ref, onValue, update } from "firebase/database";
 import { auth } from '../../services/firebase';
@@ -24,6 +25,9 @@ const Profile = () => {
     });
     const [isEditing, setIsEditing] = React.useState(false);
     const [editedData, setEditedData] = React.useState({});
+    const [uploadingPic, setUploadingPic] = React.useState(false);
+    const fileInputRef = React.useRef(null);
+    const [weeklyActivity, setWeeklyActivity] = React.useState([0, 0, 0, 0, 0, 0, 0]); // Last 7 days
 
     // Sync local state when Auth finishes loading user
     React.useEffect(() => {
@@ -71,6 +75,24 @@ const Profile = () => {
                     const allReports = snapshot.val();
                     const myReports = Object.values(allReports).filter(r => r.userId === currentUser.uid);
 
+                    // Calculate Weekly Activity (Last 7 days)
+                    const today = new Date();
+                    const weekData = [0, 0, 0, 0, 0, 0, 0]; // [6 days ago, 5 days ago, ..., today]
+
+                    myReports.forEach(report => {
+                        if (report.timestamp) {
+                            const reportDate = new Date(report.timestamp);
+                            const daysDiff = Math.floor((today - reportDate) / (1000 * 60 * 60 * 24));
+
+                            // Only count reports from last 7 days
+                            if (daysDiff >= 0 && daysDiff < 7) {
+                                weekData[6 - daysDiff]++; // Index 6 is today, 0 is 6 days ago
+                            }
+                        }
+                    });
+
+                    setWeeklyActivity(weekData);
+
                     // Logic for badges
                     const newBadges = [];
                     // 1. First Report
@@ -88,6 +110,7 @@ const Profile = () => {
                     setUserData(prev => ({ ...prev, reportCount: myReports.length, badges: newBadges }));
                 } else {
                     setUserData(prev => ({ ...prev, reportCount: 0, badges: [] }));
+                    setWeeklyActivity([0, 0, 0, 0, 0, 0, 0]);
                 }
             });
 
@@ -100,6 +123,71 @@ const Profile = () => {
             navigate('/login');
         }
     }, [currentUser, navigate]);
+
+    // Handle Profile Picture Upload
+    const handleProfilePicUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image size should be less than 5MB');
+            return;
+        }
+
+        setUploadingPic(true);
+        const uploadToast = toast.loading('Uploading profile picture...');
+
+        try {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+
+            // Create FormData
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', `profiles/${auth.currentUser.uid}`);
+
+            // Upload to backend
+            const response = await fetch(`${API_BASE_URL}/api/upload/image`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+
+            const { url } = await response.json();
+
+            // Update Firebase Realtime Database (both nodes for real-time sync)
+            const db = getDatabase(auth.app);
+            const updates = { profilePic: url };
+
+            await Promise.all([
+                update(ref(db, `users/citizens/${auth.currentUser.uid}`), updates),
+                update(ref(db, `users/registry/${auth.currentUser.uid}`), updates)
+            ]);
+
+            // Update local state immediately for instant UI feedback
+            setUserData(prev => ({ ...prev, profilePic: url }));
+
+            toast.success('Profile picture updated!', { id: uploadToast });
+        } catch (error) {
+            console.error('Profile pic upload error:', error);
+            toast.error('Failed to upload profile picture', { id: uploadToast });
+        } finally {
+            setUploadingPic(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
 
     if (!currentUser) return null;
 
@@ -120,21 +208,34 @@ const Profile = () => {
                                     alt="Profile"
                                     className="w-full h-full object-cover"
                                 />
+                                {uploadingPic && (
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                        <Loader2 size={32} className="text-white animate-spin" />
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Hidden File Input */}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleProfilePicUpload}
+                                className="hidden"
+                            />
+
+                            {/* Upload Button */}
                             <button
-                                onClick={() => {
-                                    const url = prompt("Enter Image URL for profile picture:", userData.profilePic);
-                                    if (url !== null) {
-                                        const db = getDatabase(auth.app);
-                                        const userRef = ref(db, `users/citizens/${auth.currentUser.uid}`);
-                                        update(userRef, { profilePic: url })
-                                            .then(() => setUserData(p => ({ ...p, profilePic: url })))
-                                            .catch(e => alert("Update failed: " + e.message));
-                                    }
-                                }}
-                                className="absolute bottom-1 right-1 z-20 bg-slate-900 dark:bg-slate-700 text-white p-2.5 rounded-full border-2 border-white dark:border-slate-900 hover:bg-black dark:hover:bg-slate-600 transition-all shadow-md group"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadingPic}
+                                className="absolute bottom-1 right-1 z-20 bg-slate-900 dark:bg-slate-700 text-white p-2.5 rounded-full border-2 border-white dark:border-slate-900 hover:bg-black dark:hover:bg-slate-600 transition-all shadow-md group disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Upload profile picture"
                             >
-                                <Edit2 size={14} className="group-hover:rotate-12 transition-transform" />
+                                {uploadingPic ? (
+                                    <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                    <Camera size={14} className="group-hover:scale-110 transition-transform" />
+                                )}
                             </button>
                         </div>
 
@@ -176,6 +277,29 @@ const Profile = () => {
 
                 {/* Right Col: Details Board */}
                 <div className="lg:col-span-2 space-y-8">
+
+                    {/* Weekly Activity Graph */}
+                    <div className="bg-[#1e293b] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl">
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold">Weekly Activity</h2>
+                                    <p className="text-slate-400 mt-1">Your reporting patterns over 7 days</p>
+                                </div>
+                                <div className="bg-blue-500/20 p-3 rounded-xl">
+                                    <BarChart size={24} className="text-blue-400" />
+                                </div>
+                            </div>
+
+                            {/* Line Graph */}
+                            <div className="relative h-64 mt-8">
+                                <WeeklyActivityGraph data={weeklyActivity} />
+                            </div>
+                        </div>
+
+                        {/* Decorative Background */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-[120px] opacity-10 -mr-16 -mt-16 pointer-events-none"></div>
+                    </div>
 
                     {/* NEW: Achievements Section (LeetCode Style) */}
                     <div className="bg-[#1e293b] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl">
@@ -226,17 +350,22 @@ const Profile = () => {
                                             lastName: editedData.lastName || userData.lastName,
                                             mobile: editedData.mobile || userData.mobile,
                                             address: editedData.address || userData.address,
-                                            // profilePic handled separately via prompt, but good to ensure consistency if we had input
                                         };
+
+                                        const saveToast = toast.loading('Saving changes...');
 
                                         const p1 = update(ref(db, `users/citizens/${auth.currentUser.uid}`), updates);
                                         const p2 = update(ref(db, `users/registry/${auth.currentUser.uid}`), updates);
 
                                         Promise.all([p1, p2]).then(() => {
                                             setIsEditing(false);
-                                            // Optimistic update
+                                            // Optimistic update (real-time listener will also update)
                                             setUserData(prev => ({ ...prev, ...updates }));
-                                        }).catch(err => alert("Update failed: " + err.message));
+                                            toast.success('Profile updated successfully!', { id: saveToast });
+                                        }).catch(err => {
+                                            console.error('Update error:', err);
+                                            toast.error('Failed to update profile: ' + err.message, { id: saveToast });
+                                        });
                                     } else {
                                         // Start Editing
                                         setEditedData(userData);
@@ -390,5 +519,135 @@ const CheckCircle = ({ size, className }) => (
         <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
 );
+
+// Weekly Activity Line Graph Component
+const WeeklyActivityGraph = ({ data }) => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const maxValue = Math.max(...data, 5); // Minimum scale of 5 for better visibility
+    const width = 100;
+    const height = 100;
+    const padding = 15;
+    const hasData = data.some(val => val > 0);
+
+    // Calculate points for the line
+    const points = data.map((value, index) => {
+        const x = (index / (data.length - 1)) * (width - 2 * padding) + padding;
+        const y = height - padding - ((value / maxValue) * (height - 2 * padding));
+        return { x, y, value };
+    });
+
+    // Create SVG path
+    const pathD = points.map((point, index) => {
+        if (index === 0) return `M ${point.x} ${point.y}`;
+
+        // Smooth curve using quadratic bezier
+        const prevPoint = points[index - 1];
+        const cpX = (prevPoint.x + point.x) / 2;
+        return `Q ${cpX} ${prevPoint.y}, ${point.x} ${point.y}`;
+    }).join(' ');
+
+    // Create area fill path
+    const areaD = `${pathD} L ${points[points.length - 1].x} ${height - padding} L ${padding} ${height - padding} Z`;
+
+    return (
+        <div className="w-full h-full relative">
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+                {/* Grid Lines */}
+                {[0, 1, 2, 3, 4].map(i => (
+                    <line
+                        key={i}
+                        x1={padding}
+                        y1={padding + (i * (height - 2 * padding) / 4)}
+                        x2={width - padding}
+                        y2={padding + (i * (height - 2 * padding) / 4)}
+                        stroke="rgba(148, 163, 184, 0.15)"
+                        strokeWidth="0.3"
+                        strokeDasharray="2,2"
+                    />
+                ))}
+
+                {/* Baseline */}
+                <line
+                    x1={padding}
+                    y1={height - padding}
+                    x2={width - padding}
+                    y2={height - padding}
+                    stroke="rgba(148, 163, 184, 0.3)"
+                    strokeWidth="0.5"
+                />
+
+                {/* Area Fill with Gradient */}
+                <defs>
+                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="rgb(59, 130, 246)" stopOpacity="0.05" />
+                    </linearGradient>
+                </defs>
+
+                {hasData && (
+                    <path
+                        d={areaD}
+                        fill="url(#areaGradient)"
+                    />
+                )}
+
+                {/* Line */}
+                <path
+                    d={pathD}
+                    fill="none"
+                    stroke="rgb(59, 130, 246)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="transition-all duration-300"
+                />
+
+                {/* Data Points */}
+                {points.map((point, index) => (
+                    <g key={index}>
+                        <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r="4"
+                            fill="rgb(59, 130, 246)"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            className="transition-all duration-200"
+                        />
+                        {point.value > 0 && (
+                            <circle
+                                cx={point.x}
+                                cy={point.y}
+                                r="2"
+                                fill="white"
+                            />
+                        )}
+                    </g>
+                ))}
+            </svg>
+
+            {/* Day Labels */}
+            <div className="flex justify-between mt-4 px-2">
+                {days.map((day, index) => (
+                    <div key={day} className="text-center flex-1">
+                        <div className="text-xs font-bold text-slate-400">{day}</div>
+                        <div className={`text-sm font-bold mt-1 ${data[index] > 0 ? 'text-blue-400' : 'text-slate-500'}`}>
+                            {data[index]}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* No Data Message */}
+            {!hasData && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-slate-400 text-sm italic">
+                        No reports yet. Start reporting to see your activity!
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default Profile;
