@@ -10,7 +10,8 @@ const {
     getAllReports,
     updateReportStatus,
     sendBroadcast,
-    getNearbyReports
+    getNearbyReports,
+    detectLocationFromText
 } = require('../controllers/reportController');
 
 router.get('/test', (req, res) => {
@@ -19,6 +20,7 @@ router.get('/test', (req, res) => {
 });
 
 router.post('/verify-image', verifyReportImage);
+router.post('/detect-location', detectLocationFromText);
 router.post('/create', createReport);
 router.post('/update-status', updateReportStatus);
 router.post('/broadcast', sendBroadcast);

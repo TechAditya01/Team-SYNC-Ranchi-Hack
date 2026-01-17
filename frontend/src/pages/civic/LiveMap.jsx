@@ -115,6 +115,7 @@ const LiveMap = () => {
         });
     }, []);
 
+<<<<<<< HEAD
     const filteredPins = pins.filter(pin => {
         if (filterType === 'all') return pin.status !== 'Resolved';
         if (filterType === 'critical') {
@@ -133,6 +134,62 @@ const LiveMap = () => {
 
     const pendingCount = pins.filter(p => p.status === 'Pending').length;
     const resolvedCount = pins.filter(p => p.status === 'Resolved' || p.status === 'Accepted').length;
+=======
+    // Helper: Haversine distance in meters
+    const haversineDistance = (coords1, coords2) => {
+        function toRad(x) {
+            return (x * Math.PI) / 180;
+        }
+
+        const R = 6371e3; // Earth radius in meters
+        const dLat = toRad(coords2.lat - coords1.lat);
+        const dLon = toRad(coords2.lng - coords1.lng);
+        const lat1 = toRad(coords1.lat);
+        const lat2 = toRad(coords2.lat);
+
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
+    };
+
+    // Clustering Logic
+    const clusters = React.useMemo(() => {
+        const clustered = [];
+        const visited = new Set();
+        // Filter out resolved issues before clustering
+        const activePins = pins.filter(pin => pin.status !== 'Resolved');
+
+        activePins.forEach((pin) => {
+            if (visited.has(pin.id)) return;
+            if (!pin.location || !pin.location.lat || !pin.location.lng) return;
+
+            const cluster = [pin];
+            visited.add(pin.id);
+
+            activePins.forEach((other) => {
+                if (visited.has(other.id)) return;
+                if (!other.location || !other.location.lat || !other.location.lng) return;
+
+                const dist = haversineDistance(
+                    { lat: parseFloat(pin.location.lat), lng: parseFloat(pin.location.lng) },
+                    { lat: parseFloat(other.location.lat), lng: parseFloat(other.location.lng) }
+                );
+
+                if (dist <= 300) { // 300 meters radius
+                    cluster.push(other);
+                    visited.add(other.id);
+                }
+            });
+
+            clustered.push(cluster);
+        });
+
+        return clustered;
+    }, [pins]);
+>>>>>>> pshx09
 
     return (
         <CivicLayout noPadding>
@@ -163,6 +220,7 @@ const LiveMap = () => {
                             title="You are here"
                         />
 
+<<<<<<< HEAD
                         {/* Incident Markers */}
                         {filteredPins.map(pin => {
                             const isCritical =
@@ -179,6 +237,53 @@ const LiveMap = () => {
                             else if (pin.type?.toLowerCase().includes('traffic')) iconEmoji = '🚦';
                             else if (pin.type?.toLowerCase().includes('sos')) iconEmoji = '🚨';
 
+=======
+                        {/* Incident Markers & Clusters */}
+                        {clusters.map((cluster, index) => {
+                            const isCluster = cluster.length > 1;
+                            const pin = cluster[0]; // Use first pin as representative for location
+
+                            if (isCluster) {
+                                return (
+                                    <OverlayView
+                                        key={`cluster-${index}`}
+                                        position={{ lat: parseFloat(pin.location.lat), lng: parseFloat(pin.location.lng) }}
+                                        mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                                        getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -(height / 2) })}
+                                    >
+                                        <div
+                                            className="relative flex items-center justify-center w-20 h-20 cursor-pointer group z-50 hover:z-[60]"
+                                            onClick={() => setSelectedPin(pin)} // For now open the first one, or we could support cluster viewing
+                                        >
+                                            <span className="absolute inline-flex h-full w-full rounded-full bg-orange-600 opacity-75 animate-ping"></span>
+                                            <span className="absolute inline-flex h-12 w-12 rounded-full bg-orange-500 opacity-40 animate-pulse"></span>
+                                            <div className="relative w-14 h-14 bg-orange-600 rounded-full shadow-xl flex flex-col items-center justify-center border-4 border-white z-10 text-white leading-tight">
+                                                <span className="text-[10px] font-bold uppercase">Area</span>
+                                                <span className="text-lg font-black">{cluster.length}</span>
+                                            </div>
+                                        </div>
+                                    </OverlayView>
+                                );
+                            }
+
+                            // Single Pin Rendering (Existing Logic)
+                            // Enhanced Critical Check including explicit SOS type
+                            const isCritical =
+                                ['Fire & Safety', 'Medical/Ambulance', 'Police'].includes(pin.department) ||
+                                pin.priority === 'Critical' ||
+                                pin.type === 'SOS Emergency';
+
+                            // Determine Icon based on type
+                            let iconEmoji = '🚩';
+                            if (pin.type?.toLowerCase().includes('pothole')) iconEmoji = '🚧';
+                            else if (pin.type?.toLowerCase().includes('garbage')) iconEmoji = '🗑️';
+                            else if (pin.type?.toLowerCase().includes('light')) iconEmoji = '💡';
+                            else if (pin.type?.toLowerCase().includes('water')) iconEmoji = '💧';
+                            else if (pin.type?.toLowerCase().includes('fire')) iconEmoji = '🔥';
+                            else if (pin.type?.toLowerCase().includes('traffic')) iconEmoji = '🚦';
+                            else if (pin.type?.toLowerCase().includes('sos')) iconEmoji = '🚨'; // Fallback SOS icon
+
+>>>>>>> pshx09
                             if (isCritical) {
                                 return (
                                     <OverlayView
@@ -187,6 +292,7 @@ const LiveMap = () => {
                                         mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
                                         getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -height - 10 })}
                                     >
+<<<<<<< HEAD
                                         <div className="relative group">
                                             <div
                                                 className="relative flex items-center justify-center w-16 h-16 cursor-pointer z-50"
@@ -217,6 +323,19 @@ const LiveMap = () => {
                                                         </span>
                                                     </div>
                                                 </div>
+=======
+                                        <div
+                                            className="relative flex items-center justify-center w-16 h-16 cursor-pointer group z-50 hover:z-[60]"
+                                            onClick={() => setSelectedPin(pin)}
+                                        >
+                                            {/* Blinking Ring for SOS/Critical */}
+                                            <span className="absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-75 animate-ping"></span>
+                                            <span className="absolute inline-flex h-10 w-10 rounded-full bg-red-500 opacity-40 animate-pulse"></span>
+
+                                            {/* Core Icon */}
+                                            <div className="relative w-12 h-12 bg-red-600 rounded-full shadow-xl flex items-center justify-center border-4 border-white z-10 text-white font-bold text-sm tracking-tighter">
+                                                SOS
+>>>>>>> pshx09
                                             </div>
                                         </div>
                                     </OverlayView>
@@ -228,6 +347,7 @@ const LiveMap = () => {
                                     key={pin.id}
                                     position={{ lat: parseFloat(pin.location.lat), lng: parseFloat(pin.location.lng) }}
                                     mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+<<<<<<< HEAD
                                     getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -height - 10 })}
                                 >
                                     <div className="relative group">
@@ -263,6 +383,16 @@ const LiveMap = () => {
                                                 </div>
                                             </div>
                                         </div>
+=======
+                                    getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -(height / 2) })}
+                                >
+                                    <div
+                                        className="relative flex flex-col items-center justify-center cursor-pointer hover:scale-110 transition-transform hover:z-40"
+                                        onClick={() => setSelectedPin(pin)}
+                                    >
+                                        <div className="text-3xl drop-shadow-md filter">{iconEmoji}</div>
+                                        <div className="w-2 h-2 bg-black/30 rounded-full blur-[1px] mt-[-2px]"></div>
+>>>>>>> pshx09
                                     </div>
                                 </OverlayView>
                             );

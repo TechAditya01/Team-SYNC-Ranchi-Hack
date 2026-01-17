@@ -299,19 +299,64 @@ function parseGeminiResponse(response) {
         text = text.replace(/```json|```/g, '').trim();
         const jsonResult = JSON.parse(text);
 
-        return {
-            isReal: jsonResult.isReal || jsonResult.isValid,
-            fakeReason: jsonResult.fakeReason || (jsonResult.isValid ? null : "Verification failed"),
-            issue: jsonResult.issue || jsonResult.category || "General Issue",
-            explanation: jsonResult.description || jsonResult.issue, // Map description to explanation logic
-            description: jsonResult.description,
-            severity: jsonResult.priority || "Medium",
-            priority: jsonResult.priority || "Medium",
-            category: jsonResult.category || "General",
-            confidence: jsonResult.confidence || 80
-        };
+      const mapped = mapEventAndDepartment({
+    category: jsonResult.category || 'General',
+    description: jsonResult.description || ''
+});
+
+return {
+    isReal: jsonResult.isReal || jsonResult.isValid,
+    fakeReason: jsonResult.fakeReason || (jsonResult.isValid ? null : "Verification failed"),
+
+    // Existing fields (unchanged)
+    issue: jsonResult.issue || jsonResult.category || "General Issue",
+    explanation: jsonResult.description || jsonResult.issue,
+    description: jsonResult.description,
+    severity: jsonResult.priority || "Medium",
+    priority: jsonResult.priority || "Medium",
+    category: jsonResult.category || "General",
+    confidence: jsonResult.confidence || 80,
+
+    // ✅ NEW FIELDS (THIS IS YOUR FEATURE)
+    eventType: mapped.eventType,
+    department: mapped.department,
+    aiSource: 'gemini-vertex'
+};
+
     } catch (e) {
         console.error("JSON Parse Error:", e);
         return { isReal: false, fakeReason: "Invalid AI Response Format" };
     }
+<<<<<<< HEAD
+=======
+}
+
+
+// ================= EVENT CLASSIFICATION LAYER =================
+
+function mapEventAndDepartment({ category, description }) {
+    const text = `${category} ${description}`.toLowerCase();
+
+    if (/robbery|theft|crime|attack|fight|weapon|gun/.test(text)) {
+        return { eventType: 'Safety Alert', department: 'Police' };
+    }
+
+    if (/traffic|jam|accident|signal|rush/.test(text)) {
+        return { eventType: 'Traffic Rush', department: 'Traffic' };
+    }
+
+    if (/road|pothole|closure|construction/.test(text)) {
+        return { eventType: 'Road Closure', department: 'Municipal' };
+    }
+
+    if (/power|electricity|transformer|outage/.test(text)) {
+        return { eventType: 'Power Outage', department: 'Electricity' };
+    }
+
+    if (/water|pipeline|sewage|leak/.test(text)) {
+        return { eventType: 'Water Issue', department: 'Municipal' };
+    }
+
+    return { eventType: 'General Civic Issue', department: 'General' };
+>>>>>>> pshx09
 }
