@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { FileText, MapPin, Calendar, ArrowRight, Filter, Search, Plus } from 'lucide-react';
+import { FileText, MapPin, Calendar, ArrowRight, Search, Plus, Clock, CheckCircle, AlertCircle, Loader2, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CivicLayout from './CivicLayout';
-import { getDatabase, ref, query, orderByChild, equalTo, onValue } from "firebase/database";
 import { auth } from '../../services/firebase';
 
 const MyReports = () => {
     const [filter, setFilter] = useState('All');
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
     React.useEffect(() => {
         const fetchReports = async () => {
@@ -38,7 +38,9 @@ const MyReports = () => {
                             minute: '2-digit'
                         }),
                         status: r.status,
-                        severity: r.priority || 'Normal'
+                        severity: r.priority || 'Normal',
+                        department: r.department || 'General',
+                        imageUrl: r.imageUrl || null
                     })));
                 } else {
                     setReports([]);
@@ -54,100 +56,266 @@ const MyReports = () => {
         fetchReports();
     }, []);
 
-    const filteredReports = filter === 'All' ? reports : reports.filter(r => r.status === filter);
+    const filteredReports = reports.filter(r => {
+        const matchesFilter = filter === 'All' || r.status === filter;
+        const matchesSearch = r.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            r.location.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesFilter && matchesSearch;
+    });
 
-    const getStatusColor = (status) => {
+    const stats = {
+        total: reports.length,
+        pending: reports.filter(r => r.status === 'Pending').length,
+        resolved: reports.filter(r => r.status === 'Resolved' || r.status === 'Accepted').length,
+        inProgress: reports.filter(r => r.status === 'In Progress').length
+    };
+
+    const getStatusConfig = (status) => {
         switch (status) {
-            case 'Pending': return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30';
-            case 'Resolved': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-500/20 dark:text-green-400 dark:border-green-500/30';
-            case 'In Progress': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30';
-            case 'Accepted': return 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30';
-            case 'Rejected - Unconventional Report': return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30';
-            default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400';
+            case 'Pending':
+                return {
+                    bg: 'bg-blue-100 dark:bg-blue-900/20',
+                    text: 'text-blue-600 dark:text-blue-400',
+                    border: 'border-blue-200 dark:border-blue-800',
+                    icon: <Clock size={14} />
+                };
+            case 'Resolved':
+            case 'Accepted':
+                return {
+                    bg: 'bg-blue-100 dark:bg-blue-900/20',
+                    text: 'text-blue-600 dark:text-blue-400',
+                    border: 'border-blue-200 dark:border-blue-800',
+                    icon: <CheckCircle size={14} />
+                };
+            case 'In Progress':
+                return {
+                    bg: 'bg-blue-100 dark:bg-blue-900/20',
+                    text: 'text-blue-600 dark:text-blue-400',
+                    border: 'border-blue-200 dark:border-blue-800',
+                    icon: <Loader2 size={14} className="animate-spin" />
+                };
+            case 'Rejected - Unconventional Report':
+                return {
+                    bg: 'bg-red-100 dark:bg-red-900/20',
+                    text: 'text-red-600 dark:text-red-400',
+                    border: 'border-red-200 dark:border-red-800',
+                    icon: <AlertCircle size={14} />
+                };
+            default:
+                return {
+                    bg: 'bg-slate-100 dark:bg-slate-700',
+                    text: 'text-slate-600 dark:text-slate-400',
+                    border: 'border-slate-200 dark:border-slate-600',
+                    icon: <FileText size={14} />
+                };
         }
     };
 
     return (
         <CivicLayout>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            {/* Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">My Reports</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Track the status of your submitted issues.</p>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
+                        <div className="p-3 bg-blue-600 dark:bg-blue-500 rounded-lg">
+                            <FileText size={28} className="text-white" />
+                        </div>
+                        My Reports
+                    </h1>
+                    <p className="text-slate-600 dark:text-slate-400 text-base ml-16">Track and manage your civic issue submissions</p>
                 </div>
-                <Link to="/report" className="flex items-center gap-2 px-5 py-3 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg">
+                <Link
+                    to="/civic/report"
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors"
+                >
                     <Plus size={20} /> New Report
                 </Link>
             </div>
 
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <StatCard icon={<FileText size={24} />} label="Total Reports" value={stats.total} />
+                <StatCard icon={<Clock size={24} />} label="Pending" value={stats.pending} />
+                <StatCard icon={<Loader2 size={24} className="animate-spin" />} label="In Progress" value={stats.inProgress} />
+                <StatCard icon={<CheckCircle size={24} />} label="Resolved" value={stats.resolved} />
+            </div>
+
             {/* Filters & Search */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
-                <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-                    {['All', 'Pending', 'Resolved', 'In Progress'].map(f => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${filter === f ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                        >
-                            {f}
-                        </button>
-                    ))}
-                </div>
-                <div className="relative w-full md:w-64">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search reports..."
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
-                    />
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 mb-8">
+                <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                    {/* Filter Tabs */}
+                    <div className="flex items-center gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0">
+                        {[
+                            { label: 'All', icon: <FileText size={16} /> },
+                            { label: 'Pending', icon: <Clock size={16} /> },
+                            { label: 'In Progress', icon: <Loader2 size={16} className="animate-spin" /> },
+                            { label: 'Resolved', icon: <CheckCircle size={16} /> }
+                        ].map(f => (
+                            <button
+                                key={f.label}
+                                onClick={() => setFilter(f.label)}
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${filter === f.label
+                                    ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                    }`}
+                            >
+                                {f.icon}
+                                {f.label}
+                                {f.label !== 'All' && (
+                                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${filter === f.label
+                                        ? 'bg-white/20'
+                                        : 'bg-slate-200 dark:bg-slate-600'
+                                        }`}>
+                                        {f.label === 'Pending' ? stats.pending :
+                                            f.label === 'In Progress' ? stats.inProgress :
+                                                stats.resolved}
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="relative w-full lg:w-80">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search reports..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors"
+                        />
+                    </div>
                 </div>
             </div>
 
-            {/* Reports Grid */}
-            <div className="grid gap-4">
-                {loading && <div className="text-center py-10 text-slate-500">Loading your reports...</div>}
-
-                {!loading && filteredReports.length === 0 && (
-                    <div className="text-center py-10 text-slate-500">
-                        No reports found. Start by submitting one!
+            {/* Reports List */}
+            <div className="space-y-4">
+                {loading && (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-600 dark:text-slate-400">
+                        <Loader2 className="animate-spin mb-4 text-blue-600 dark:text-blue-400" size={48} />
+                        <p className="text-lg font-semibold">Loading your reports...</p>
                     </div>
                 )}
 
-                {filteredReports.map(report => (
-                    <div key={report.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-500/50 transition-colors group">
-                        <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
-                            <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-xl shrink-0">
-                                    {report.type?.toLowerCase() === 'pothole' ? '🚧' :
-                                        report.type?.toLowerCase() === 'garbage' ? '🗑️' :
-                                            report.type?.toLowerCase() === 'light' ? '💡' :
-                                                report.type?.toLowerCase() === 'water' ? '💧' : '📋'}
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-bold text-slate-900 dark:text-white">{report.type}</h3>
-                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${getStatusColor(report.status)}`}>{report.status}</span>
+                {!loading && filteredReports.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-600 dark:text-slate-400">
+                        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                            <FileText size={40} className="text-slate-400 dark:text-slate-500" />
+                        </div>
+                        <p className="text-lg font-semibold mb-2">No reports found</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-500">
+                            {searchQuery ? 'Try adjusting your search' : 'Start by submitting your first report!'}
+                        </p>
+                    </div>
+                )}
+
+                {filteredReports.map(report => {
+                    const statusConfig = getStatusConfig(report.status);
+                    return (
+                        <div
+                            key={report.id}
+                            className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors group"
+                        >
+                            <div className="flex flex-col lg:flex-row lg:items-center gap-6 justify-between">
+                                {/* Left Section */}
+                                <div className="flex items-start gap-4 flex-1">
+                                    {/* Image/Icon */}
+                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
+                                        {report.imageUrl ? (
+                                            <img
+                                                src={report.imageUrl}
+                                                alt={report.type}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    // Fallback to emoji if image fails to load
+                                                    e.target.style.display = 'none';
+                                                    e.target.nextSibling.style.display = 'flex';
+                                                }}
+                                            />
+                                        ) : null}
+                                        <div
+                                            className="w-full h-full flex items-center justify-center text-2xl"
+                                            style={{ display: report.imageUrl ? 'none' : 'flex' }}
+                                        >
+                                            {report.type?.toLowerCase() === 'pothole' ? '🚧' :
+                                                report.type?.toLowerCase() === 'garbage' ? '🗑️' :
+                                                    report.type?.toLowerCase() === 'light' ? '💡' :
+                                                        report.type?.toLowerCase() === 'water' ? '💧' : '📋'}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                                        <span className="flex items-center gap-1"><MapPin size={14} /> {report.location}</span>
-                                        <span className="flex items-center gap-1"><Calendar size={14} /> {report.date}</span>
+
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                                            <h3 className="font-bold text-slate-900 dark:text-white text-lg">{report.type}</h3>
+                                            <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
+                                                {statusConfig.icon}
+                                                {report.status}
+                                            </span>
+                                            {report.severity !== 'Normal' && (
+                                                <span className="text-xs font-semibold px-3 py-1.5 rounded-lg border bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800">
+                                                    {report.severity}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
+                                                <MapPin size={16} className="shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                                                <span className="line-clamp-1">{report.location}</span>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-500">
+                                                <span className="flex items-center gap-1.5">
+                                                    <Calendar size={14} />
+                                                    {report.date}
+                                                </span>
+                                                <span className="flex items-center gap-1.5">
+                                                    <TrendingUp size={14} />
+                                                    {report.department}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-slate-100 dark:border-slate-800 pt-4 md:pt-0 mt-2 md:mt-0">
-                                <div className="text-right hidden md:block">
-                                    <div className="text-xs font-bold text-slate-400 uppercase">ID</div>
-                                    <div className="text-sm font-mono font-medium text-slate-700 dark:text-slate-300">{report.id}</div>
+
+                                {/* Right Section */}
+                                <div className="flex items-center justify-between lg:justify-end gap-4 border-t lg:border-t-0 border-slate-200 dark:border-slate-700 pt-4 lg:pt-0">
+                                    {/* Report ID */}
+                                    <div className="text-left lg:text-right">
+                                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase mb-1">Report ID</div>
+                                        <div className="text-sm font-mono font-semibold text-slate-700 dark:text-slate-300">{report.id}</div>
+                                    </div>
+
+                                    {/* View Button */}
+                                    <Link
+                                        to={`/civic/report/${report.id}`}
+                                        className="p-3 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"
+                                    >
+                                        <ArrowRight size={20} />
+                                    </Link>
                                 </div>
-                                <Link to={`/civic/report/${report.id}`} className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors">
-                                    <ArrowRight size={20} />
-                                </Link>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </CivicLayout>
     );
 };
+
+const StatCard = ({ icon, label, value }) => (
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                {icon}
+            </div>
+        </div>
+        <div>
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-semibold mb-1">{label}</p>
+            <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
+        </div>
+    </div>
+);
 
 export default MyReports;

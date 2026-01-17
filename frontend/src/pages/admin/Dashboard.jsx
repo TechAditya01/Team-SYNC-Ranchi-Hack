@@ -54,21 +54,29 @@ const AdminDashboard = () => {
 
         const db = getDatabase();
         const sanitizedDept = sanitizeKey(currentUser.department);
-        // const deptReportsRef = ref(db, `reports/by_department/${sanitizedDept}`);
-        const deptReportsRef = ref(db, `reports`); // LISTEN TO EVERYTHING
+        // Listen to department-specific reports
+        const deptReportsRef = ref(db, `reports/by_department/${sanitizedDept}`);
+        console.log(`[ADMIN DASHBOARD] Listening to department: ${currentUser.department} (${sanitizedDept})`);
 
         // 1. Initial API Fetch (Fallback if RTDB is blocked)
         const fetchFromApi = async () => {
             try {
-                // TEMP DEBUG: Fetch ALL reports regardless of department
-
                 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
-                const res = await fetch(`${API_BASE_URL}/api/reports`); // FETCH EVERYTHING
+                // Fetch department-specific reports
+                const res = await fetch(`${API_BASE_URL}/api/reports/department/${encodeURIComponent(currentUser.department)}`);
+                console.log(`[ADMIN DASHBOARD] Fetching from API for department: ${currentUser.department}`);
+
                 if (res.ok) {
                     const data = await res.json();
                     if (data.reports) {
+                        console.log(`[ADMIN DASHBOARD] Received ${data.reports.length} reports for ${currentUser.department}`);
                         processReports(data.reports);
+                    } else {
+                        console.log(`[ADMIN DASHBOARD] No reports found for ${currentUser.department}`);
+                        processReports([]);
                     }
+                } else {
+                    console.error(`[ADMIN DASHBOARD] API returned error: ${res.status}`);
                 }
             } catch (err) {
                 console.error("API Fetch Error:", err);

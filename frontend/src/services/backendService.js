@@ -14,12 +14,30 @@ export const verifyImageWithAI = async (file) => {
                     body: JSON.stringify({ imageBase64: base64, type: 'general' })
                 });
                 const data = await response.json();
+                console.log("[BACKEND RESPONSE]:", data);
+
                 if (response.ok) {
+                    // Return the complete analysis object with all comprehensive details
                     resolve({
-                        explanation: data.analysis.description,
-                        ai_confidence: data.analysis.confidence,
-                        verified: data.analysis.isValid,
-                        category: data.analysis.category
+                        // Basic fields for backward compatibility
+                        explanation: data.analysis.explanation || data.analysis.detected_issue,
+                        ai_confidence: data.analysis.ai_confidence || data.analysis.confidence?.overall,
+                        verified: data.analysis.verified,
+                        detected_issue: data.analysis.detected_issue,
+                        department: data.analysis.department,
+
+                        // Comprehensive analysis fields
+                        imageOverview: data.analysis.imageOverview,
+                        detailedIssueAnalysis: data.analysis.detailedIssueAnalysis,
+                        eventDetection: data.analysis.eventDetection,
+                        classification: data.analysis.classification,
+                        departmentRouting: data.analysis.departmentRouting,
+                        actionableInsights: data.analysis.actionableInsights,
+                        authenticity: data.analysis.authenticity,
+                        confidence: data.analysis.confidence,
+
+                        // Store full analysis for debugging
+                        fullAnalysis: data.analysis
                     });
                 } else {
                     console.error("Backend Error Detail:", data.details || data.error);
