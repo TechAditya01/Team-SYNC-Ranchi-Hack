@@ -5,157 +5,152 @@ export default function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // Helper to handle scrolling if on home, or navigating then scrolling
     const handleNavigation = (e, targetId) => {
         e.preventDefault();
         if (location.pathname === '/') {
-            const element = document.getElementById(targetId);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth' });
-            }
+            document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
         } else {
             navigate(`/#${targetId}`);
         }
     };
 
     const [isDarkMode, setIsDarkMode] = React.useState(false);
+    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
     React.useEffect(() => {
-        // Check local storage or system preference
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            setIsDarkMode(true);
-            document.documentElement.classList.add('dark');
-        } else {
-            setIsDarkMode(false);
-            document.documentElement.classList.remove('dark');
-        }
+        const dark =
+            localStorage.theme === 'dark' ||
+            (!('theme' in localStorage) &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+        document.documentElement.classList.toggle('dark', dark);
+        setIsDarkMode(dark);
     }, []);
 
     const toggleTheme = () => {
-        if (isDarkMode) {
-            document.documentElement.classList.remove('dark');
-            localStorage.theme = 'light';
-            setIsDarkMode(false);
-            console.log("Switched to Light Mode");
-        } else {
-            document.documentElement.classList.add('dark');
-            localStorage.theme = 'dark';
-            setIsDarkMode(true);
-            console.log("Switched to Dark Mode");
-        }
+        const newMode = !isDarkMode;
+        document.documentElement.classList.toggle('dark', newMode);
+        localStorage.theme = newMode ? 'dark' : 'light';
+        setIsDarkMode(newMode);
     };
 
     const isDashboard = location.pathname === '/dashboard';
-
-    const isAuthPage = ['/login', '/signup', '/register', '/forgot-password'].some(path => location.pathname.toLowerCase().startsWith(path));
-
-    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-
-    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
-    const closeMenu = () => setIsMenuOpen(false);
+    const isAuthPage = ['/login', '/signup', '/register', '/forgot-password']
+        .some(p => location.pathname.startsWith(p));
 
     return (
-        <nav className="sticky top-0 z-50 bg-[#1a36ca] dark:bg-slate-950 text-white shadow-lg transition-colors duration-300">
-            <div className="px-6 py-4 flex items-center justify-between">
-                <Link to="/" className="flex items-center gap-3 z-50 relative" onClick={closeMenu}>
-                    <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shrink-0 transition-colors">
-                        <span className="text-[#1a36ca] dark:text-blue-400 font-bold text-xl">⚡</span>
+        <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#0b1224]/80 dark:bg-slate-950/80 border-b border-white/10">
+            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+
+                {/* Logo */}
+                <Link to="/" className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                        ⚡
                     </div>
-                    <div className="flex flex-col">
-                        <h1 className="text-xl font-bold leading-tight">नगर Alert Hub</h1>
-                        <span className="text-xs opacity-80 font-light">Civic Intelligence Platform</span>
+                    <div>
+                        <h1 className="font-bold text-lg text-white leading-tight">
+                            नगर Alert Hub
+                        </h1>
+                        <span className="text-xs text-white/70">
+                            Civic Intelligence Platform
+                        </span>
                     </div>
                 </Link>
 
-                {/* Desktop Menu */}
+                {/* Desktop Nav */}
                 {!isDashboard && (
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-                        <Link to="/" className="hover:text-blue-200 dark:hover:text-blue-400 transition-colors">Home</Link>
-                        <a href="/#features" onClick={(e) => handleNavigation(e, 'features')} className="hover:text-blue-200 dark:hover:text-blue-400 transition-colors cursor-pointer">Features</a>
-                        <a href="/#whatsapp" onClick={(e) => handleNavigation(e, 'whatsapp')} className="hover:text-blue-200 dark:hover:text-blue-400 transition-colors cursor-pointer">WhatsApp Integration</a>
-                        <a href="/#about" onClick={(e) => handleNavigation(e, 'about')} className="hover:text-blue-200 dark:hover:text-blue-400 transition-colors cursor-pointer">About</a>
+                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/80">
+                        <Link to="/" className="hover:text-white">Home</Link>
+                        <a onClick={(e) => handleNavigation(e, 'features')} className="cursor-pointer hover:text-white">Features</a>
+                        <a onClick={(e) => handleNavigation(e, 'whatsapp')} className="cursor-pointer hover:text-white">WhatsApp</a>
+                        <a onClick={(e) => handleNavigation(e, 'about')} className="cursor-pointer hover:text-white">About</a>
                     </div>
                 )}
 
                 {/* Desktop Actions */}
                 <div className="hidden md:flex items-center gap-4">
+
+                    {/* Theme Toggle */}
                     <button
                         onClick={toggleTheme}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-800/50 dark:bg-slate-800 rounded-full hover:bg-blue-800 dark:hover:bg-slate-700 transition-colors border border-blue-700/50 dark:border-slate-700 text-sm cursor-pointer"
-                        aria-label={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                        className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition"
+                        title="Toggle Theme"
                     >
-                        {isDarkMode ? (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-                                <span>Light Mode</span>
-                            </>
-                        ) : (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>
-                                <span>Dark Mode</span>
-                            </>
-                        )}
+                        {isDarkMode ? '🌞' : '🌙'}
                     </button>
 
-                    {isDashboard ? (
-                        <div className="flex items-center gap-4">
-                            <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm ring-2 ring-white/20">JD</div>
-                            <Link to="/" className="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm">Logout</Link>
-                        </div>
-                    ) : !isAuthPage ? (
-                        <Link to="/login" className="bg-[#f97316] hover:bg-[#ea580c] text-white font-medium px-6 py-2 rounded-lg transition-colors shadow-lg hover:shadow-orange-500/20 text-sm">
-                            Login / Sign Up
+                    {/* Primary CTA */}
+                    {!isDashboard && !isAuthPage && (
+                        <Link
+                            to="/report"
+                            className="px-5 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-lg hover:shadow-orange-500/30 transition"
+                        >
+                            Report Issue
                         </Link>
-                    ) : null}
-                </div>
-
-                {/* Mobile Hamburger Button */}
-                <button
-                    onClick={toggleMenu}
-                    className="md:hidden z-50 p-2 rounded-lg bg-blue-800/50 dark:bg-slate-800 text-white hover:bg-blue-700 dark:hover:bg-slate-700 transition-colors"
-                >
-                    {isMenuOpen ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                    )}
-                </button>
-            </div>
-
-            {/* Mobile Menu Overlay */}
-            <div className={`fixed inset-0 bg-[#1a36ca] dark:bg-slate-950 z-40 transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-6 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="flex flex-col gap-6 text-lg font-medium">
-                    {!isDashboard && (
-                        <>
-                            <Link to="/" onClick={closeMenu} className="py-2 border-b border-blue-500/30 hover:text-blue-200 transition-colors">Home</Link>
-                            <a href="/#features" onClick={(e) => { handleNavigation(e, 'features'); closeMenu(); }} className="py-2 border-b border-blue-500/30 hover:text-blue-200 transition-colors">Features</a>
-                            <a href="/#whatsapp" onClick={(e) => { handleNavigation(e, 'whatsapp'); closeMenu(); }} className="py-2 border-b border-blue-500/30 hover:text-blue-200 transition-colors">WhatsApp Integration</a>
-                            <a href="/#about" onClick={(e) => { handleNavigation(e, 'about'); closeMenu(); }} className="py-2 border-b border-blue-500/30 hover:text-blue-200 transition-colors">About</a>
-                        </>
                     )}
 
-                    <button
-                        onClick={toggleTheme}
-                        className="flex items-center justify-between py-2 border-b border-blue-500/30 text-left hover:text-blue-200 transition-colors"
-                    >
-                        <span>Switch Theme</span>
-                        {isDarkMode ? (
-                            <div className="flex items-center gap-2 text-sm bg-slate-800 px-3 py-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg> Light Mode</div>
-                        ) : (
-                            <div className="flex items-center gap-2 text-sm bg-blue-800 px-3 py-1 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg> Dark Mode</div>
-                        )}
-                    </button>
-
-                    {!isAuthPage && !isDashboard && (
-                        <Link to="/login" onClick={closeMenu} className="mt-4 bg-[#f97316] hover:bg-[#ea580c] text-white font-bold py-3.5 rounded-xl text-center shadow-lg">
-                            Login / Sign Up
+                    {/* Auth */}
+                    {!isDashboard && !isAuthPage && (
+                        <Link
+                            to="/login"
+                            className="px-5 py-2 rounded-lg border border-white/20 text-white hover:bg-white/10 transition"
+                        >
+                            Login
                         </Link>
                     )}
 
                     {isDashboard && (
-                        <Link to="/" onClick={closeMenu} className="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-3.5 rounded-xl text-center shadow-lg">
+                        <Link
+                            to="/"
+                            className="px-5 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition"
+                        >
                             Logout
+                        </Link>
+                    )}
+                </div>
+
+                {/* Mobile Button */}
+                <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="md:hidden p-2 rounded-lg bg-white/10 text-white"
+                >
+                    {isMenuOpen ? '✕' : '☰'}
+                </button>
+            </div>
+
+            {/* Mobile Menu */}
+            <div className={`md:hidden fixed inset-0 bg-[#0b1224] text-white transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="pt-24 px-6 flex flex-col gap-6 text-lg">
+
+                    <Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link>
+                    <a onClick={(e) => { handleNavigation(e, 'features'); setIsMenuOpen(false); }}>Features</a>
+                    <a onClick={(e) => { handleNavigation(e, 'whatsapp'); setIsMenuOpen(false); }}>WhatsApp</a>
+                    <a onClick={(e) => { handleNavigation(e, 'about'); setIsMenuOpen(false); }}>About</a>
+
+                    <button
+                        onClick={toggleTheme}
+                        className="mt-6 py-3 rounded-xl bg-white/10"
+                    >
+                        Switch Theme
+                    </button>
+
+                    {!isAuthPage && !isDashboard && (
+                        <Link
+                            to="/report"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="py-3 rounded-xl bg-orange-500 text-center font-bold"
+                        >
+                            Report Issue
+                        </Link>
+                    )}
+
+                    {!isAuthPage && !isDashboard && (
+                        <Link
+                            to="/login"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="py-3 rounded-xl border border-white/20 text-center"
+                        >
+                            Login
                         </Link>
                     )}
                 </div>

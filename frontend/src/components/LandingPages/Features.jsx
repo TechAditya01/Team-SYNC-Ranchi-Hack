@@ -1,55 +1,89 @@
 import React from 'react';
+import wrImg from '../../assets/wr.png';
+import aisImg from '../../assets/ais.png';
+import ltImg from '../../assets/lt.png';
 
 export default function Features() {
+
     const features = [
         {
-            title: "Instant Reporting",
-            description: "Report civic issues directly through WhatsApp. No app download required - just send a hi.",
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-            )
+            image: wrImg,
+            title: "WhatsApp Reporting",
+            highlight: "No app. No forms.",
+            desc: "Just send a message and report issues instantly.",
+            color: "from-orange-400 to-orange-600"
         },
         {
-            title: "AI Analysis",
-            description: "Smart categorization and duplication checks ensure authorities focus on real problems, not noise.",
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
-                    <path d="M12 2a10 10 0 1 0 10 10 10 10 0 0 0-10-10Zm0 14a1 1 0 1 1 1-1 1 1 0 0 1-1 1Zm1-4a1 1 0 0 1-2 0V8a1 1 0 0 1 2 0Z"></path>
-                </svg>
-            )
+            image: aisImg,
+            title: "AI Smart Routing",
+            highlight: "Right dept. First time.",
+            desc: "AI removes duplicates and routes issues accurately.",
+            color: "from-blue-400 to-blue-600"
         },
         {
-            title: "Real-time Updates",
-            description: "Get instant notifications on the status of your reported issues right in your chat window.",
-            icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-            )
+            image: ltImg,
+            title: "Live Tracking",
+            highlight: "Real-time updates",
+            desc: "Track issue progress directly in WhatsApp.",
+            color: "from-green-400 to-green-600"
         }
     ];
 
     return (
-        <section id="features" className="py-24 bg-white dark:bg-slate-900 transition-colors duration-300">
+        <section
+            id="features"
+            className="py-28 bg-white dark:bg-slate-950 transition-colors"
+        >
             <div className="max-w-7xl mx-auto px-6">
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Why Nagar Alert Hub?</h2>
-                    <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">Bridging the gap between citizens and administration with technology that works for everyone.</p>
+
+                {/* Section Header */}
+                <div className="text-center mb-20">
+                    <span className="inline-block mb-4 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-sm font-semibold">
+                        Why Nagar Alert Hub?
+                    </span>
+
+                    <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-6">
+                        Built for Citizens. Trusted by Cities.
+                    </h2>
+
+                    <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto text-lg">
+                        A simple, transparent civic reporting system that actually works.
+                    </p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-8">
-                    {features.map((feature, index) => (
-                        <div key={index} className="p-8 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-sm group">
-                            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-700 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-50 dark:group-hover:bg-slate-600 transition-colors">
-                                {feature.icon}
+                {/* Feature Cards */}
+                <div className="grid md:grid-cols-3 gap-10">
+                    {features.map((f, i) => (
+                        <div
+                            key={i}
+                            className="group relative p-10 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all duration-300"
+                        >
+                            {/* Glow */}
+                            <div className={`absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-10 bg-gradient-to-br ${f.color} transition`} />
+
+                            {/* Icon */}
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg mb-8 overflow-hidden">
+                                <img src={f.image} alt={f.title} className="w-full h-full object-cover" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">{feature.title}</h3>
-                            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                                {feature.description}
+
+                            {/* Content */}
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                                {f.title}
+                            </h3>
+
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">
+                                {f.highlight}
                             </p>
+
+                            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                                {f.desc}
+                            </p>
+
+                            {/* Bottom Tag */}
+                            <div className="mt-6 inline-flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                Powered by Nagar Intelligence
+                            </div>
                         </div>
                     ))}
                 </div>
