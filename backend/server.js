@@ -29,10 +29,8 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
 }
 
 // Middleware
-app.use(cors({
-    origin: 'http://localhost:5173', // Vite default port
-    credentials: true
-}));
+app.use(cors()); 
+
 app.use(express.json({ limit: '10mb' }));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
