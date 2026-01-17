@@ -5,6 +5,8 @@ import Footer from '../../components/LandingPages/Footer';
 import { useAuth } from '../../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import logo from '../../assets/logo.jpeg';
+import lbg from '../../assets/lbg.png';
 
 export default function Register() {
     const [userType, setUserType] = useState('citizen');
@@ -75,11 +77,11 @@ export default function Register() {
                 {/* LEFT VISUAL PANEL */}
                 <div className="hidden lg:flex w-1/2 relative items-center px-16">
                     <img
-                        src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2144&auto=format&fit=crop"
-                        className="absolute inset-0 w-full h-full object-cover opacity-30"
+                        src={lbg}
+                        className="absolute inset-0 w-full h-full object-cover opacity-40"
                         alt="city"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/90 via-white/85 to-blue-50/80 dark:from-[#0f172a]/95 dark:to-slate-900/95" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/65 to-blue-50/60 dark:from-[#0f172a]/65 dark:to-slate-900/95" />
 
                     <div className="relative z-10 max-w-xl">
                         <h1 className="text-5xl font-extrabold text-slate-900 dark:text-white mb-4">
@@ -107,6 +109,7 @@ export default function Register() {
                 <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-16">
                     <div className="max-w-[460px] w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
 
+                        <img src={logo} alt="Logo" className="w-16 h-16 rounded-full mx-auto mb-4 object-cover" />
                         <h2 className="text-3xl font-bold text-center text-slate-900 dark:text-white mb-1">
                             Nagar Alert Hub
                         </h2>
@@ -120,11 +123,10 @@ export default function Register() {
                                 <button
                                     key={type}
                                     onClick={() => setUserType(type)}
-                                    className={`py-2 rounded-lg text-sm font-semibold ${
-                                        userType === type
-                                            ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white'
-                                            : 'text-slate-500'
-                                    }`}
+                                    className={`py-2 rounded-lg text-sm font-semibold ${userType === type
+                                        ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white'
+                                        : 'text-slate-500'
+                                        }`}
                                 >
                                     {type === 'citizen' ? 'Citizen Portal' : 'Admin / Official'}
                                 </button>
@@ -138,13 +140,13 @@ export default function Register() {
                                     name="firstName"
                                     placeholder="First Name"
                                     onChange={handleInputChange}
-                                    className="input"
+                                    className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                                 />
                                 <input
                                     name="lastName"
                                     placeholder="Last Name"
                                     onChange={handleInputChange}
-                                    className="input"
+                                    className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                                 />
                             </div>
 
@@ -152,7 +154,7 @@ export default function Register() {
                                 name="mobile"
                                 placeholder="Mobile Number"
                                 onChange={handleInputChange}
-                                className="input"
+                                className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                             />
 
                             {userType === 'citizen' && (
@@ -160,7 +162,7 @@ export default function Register() {
                                     placeholder="Full Address"
                                     value={address}
                                     onChange={(e) => setAddress(e.target.value)}
-                                    className="input"
+                                    className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                                 />
                             )}
 
@@ -168,7 +170,7 @@ export default function Register() {
                                 <select
                                     name="department"
                                     onChange={handleInputChange}
-                                    className="input"
+                                    className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                                 >
                                     <option value="">Select Department</option>
                                     <option>Police</option>
@@ -182,7 +184,7 @@ export default function Register() {
                                 name="email"
                                 placeholder="Email Address"
                                 onChange={handleInputChange}
-                                className="input"
+                                className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                             />
 
                             <div className="flex gap-4">
@@ -191,14 +193,14 @@ export default function Register() {
                                     name="password"
                                     placeholder="Password"
                                     onChange={handleInputChange}
-                                    className="input"
+                                    className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                                 />
                                 <input
                                     type="password"
                                     name="confirmPassword"
                                     placeholder="Confirm"
                                     onChange={handleInputChange}
-                                    className="input"
+                                    className="w-full flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                                 />
                             </div>
 

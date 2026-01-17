@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
+import logo from '../../assets/logo.jpeg';
 
 export default function Navbar() {
     const location = useLocation();
@@ -44,9 +45,11 @@ export default function Navbar() {
 
                 {/* Logo */}
                 <Link to="/" className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                        ⚡
-                    </div>
+                    <img
+                        src={logo}
+                        alt="नगर Alert Hub Logo"
+                        className="w-11 h-11 rounded-full object-cover"
+                    />
                     <div>
                         <h1 className="font-bold text-lg text-white leading-tight">
                             नगर Alert Hub
@@ -79,7 +82,6 @@ export default function Navbar() {
                         {isDarkMode ? '🌞' : '🌙'}
                     </button>
 
-                    {/* Primary CTA */}
                     {!isDashboard && !isAuthPage && (
                         <Link
                             to="/report"
@@ -89,7 +91,6 @@ export default function Navbar() {
                         </Link>
                     )}
 
-                    {/* Auth */}
                     {!isDashboard && !isAuthPage && (
                         <Link
                             to="/login"

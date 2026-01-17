@@ -6,6 +6,8 @@ import Footer from '../../components/LandingPages/Footer';
 // import { auth, db } from '../../services/firebase';
 // import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
+import logo from '../../assets/logo.jpeg';
+import lbg from '../../assets/lbg.png';
 
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,8 +22,6 @@ export default function Login() {
     const [password, setPassword] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
-
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
     // Note: Auto-redirect removed to allow OTP flow for email logins.
     // We only redirect if User is ALREADY authenticated on page load (clean session check),
@@ -48,7 +48,7 @@ export default function Login() {
             const uid = userCredential.user.uid;
 
             // 2. Credentials matched. Now send OTP to Email.
-            const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
+            const response = await fetch(`http://127.0.0.1:5001/api/auth/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: 'email', contact: cleanEmail })
@@ -96,19 +96,18 @@ export default function Login() {
         <div className="min-h-screen flex flex-col bg-white dark:bg-[#0f172a] transition-colors duration-300">
             <Navbar />
 
-            <div className="flex-grow flex w-full overflow-hidden">
+            <div className="flex flex-1">
                 {/* Left Side - Visuals */}
-                <div className="hidden lg:flex w-1/2 relative flex-col justify-start pt-32 px-12 pb-12 text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-colors">
-                    <div className="absolute inset-0 z-0">
-                        <img
-                            src="https://images.unsplash.com/photo-1486325212027-8081e485255e?q=80&w=2070&auto=format&fit=crop"
-                            alt="Cityscape"
-                            className="h-full w-full object-cover opacity-20 dark:opacity-40 mix-blend-overlay"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-100/80 via-white/50 to-slate-200/50 dark:from-[#0f172a] dark:via-[#0f172a]/80 dark:to-slate-900/90"></div>
-                    </div>
+                {/* Left Side - Visuals */}
+                <div className="hidden lg:flex w-1/2 relative items-center px-16">
+                    <img
+                        src={lbg}
+                        className="absolute inset-0 w-full h-full object-cover opacity-40"
+                        alt="city"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/65 to-blue-50/60 dark:from-[#0f172a]/65 dark:to-slate-900/95" />
 
-                    <div className="relative z-10 mb-8">
+                    <div className="relative z-10 max-w-xl">
                         <div className="mb-6">
                             <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <span>नगर</span>
@@ -151,12 +150,10 @@ export default function Login() {
                 </div>
 
                 {/* Right Side - Login Form */}
-                <div className="w-full lg:w-1/2 flex flex-col relative px-6 py-12 lg:p-24 justify-center bg-white dark:bg-[#0f172a] transition-colors">
+                <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-16">
                     <div className="max-w-[440px] w-full mx-auto">
                         <div className="text-center mb-10">
-                            <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-600/20 dark:shadow-blue-900/20">
-                                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                            </div>
+                            <img src={logo} alt="Logo" className="w-16 h-16 rounded-full mx-auto mb-4 object-cover" />
                             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 flex justify-center items-center gap-2">
                                 <span>नगर</span>
                                 <span>Alert Hub</span>
@@ -277,6 +274,6 @@ export default function Login() {
                 </div>
             </div>
             <Footer />
-        </div>
+        </div >
     );
 }

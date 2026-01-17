@@ -188,6 +188,8 @@ export default function Register() {
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-100/80 via-white/50 to-slate-200/50 dark:from-[#0f172a] dark:via-[#0f172a]/80 dark:to-slate-900/90"></div>
                     </div>
                     <div className="relative z-10 mb-8">
+                        {/* Added image above the Nagar logo */}
+                        <img src="asset/logo.jpeg" alt="Nagar Logo" className="mb-4 w-24 h-24 object-contain" />
                         <h2 className="text-3xl font-bold mb-6 flex items-center gap-2"><span>नगर</span><span className="font-sans">Alert Hub</span></h2>
                         <h1 className="text-5xl font-bold leading-tight mb-4 text-slate-900 dark:text-white">Join the Movement<br /><span className="text-blue-600 dark:text-blue-400">For Better Cities.</span></h1>
                         <p className="text-slate-600 dark:text-gray-300 text-lg max-w-md">Sign up today to help your local administration build a cleaner city.</p>

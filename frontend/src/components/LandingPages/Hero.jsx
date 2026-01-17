@@ -90,9 +90,8 @@ export default function Hero() {
                 ].map((item, i) => (
                     <div
                         key={i}
-                        className={`w-56 h-36 rounded-2xl bg-white/90 dark:bg-slate-800/90 backdrop-blur border shadow-xl flex flex-col items-center justify-center gap-2 font-semibold ${
-                            i % 2 !== 0 ? 'mt-8' : ''
-                        }`}
+                        className={`w-56 h-36 rounded-2xl bg-white/90 dark:bg-slate-800/90 backdrop-blur border shadow-xl flex flex-col items-center justify-center gap-2 font-semibold ${i % 2 !== 0 ? 'mt-8' : ''
+                            }`}
                     >
                         <div className="text-3xl">{item.emoji}</div>
                         <div>{item.text}</div>
