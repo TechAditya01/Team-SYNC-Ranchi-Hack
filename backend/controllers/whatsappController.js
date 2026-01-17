@@ -43,6 +43,7 @@ async function downloadMedia(url) {
 const sendMessage = async (to, message) => {
     try {
         if (!to) return;
+        console.log(`🤖 [BOT REPLY] To ${to}: "${message}"`); // Log the reply for debugging
         await axios.post(`${WHAPI_URL}/messages/text`, {
             to,
             body: message
@@ -116,13 +117,16 @@ async function getSmartReplyFromAI(context) {
     if (context.type === 'media_analysis') {
         const data = context.data;
         const locationFound = data.detectedLocation ? `Location detected: "${data.detectedLocation}"` : "NO Location found.";
+        const mediaType = data.mediaType ? data.mediaType.toUpperCase() : 'PHOTO'; // Default to PHOTO
 
         userContext = `
+        MEDIA_TYPE: ${mediaType}
         REPORT: ${data.issue} (${data.description})
         SEVERITY: ${data.priority}
         LOCATION_DATA: ${locationFound}
         
         TASK:
+        - Acknowledge the ${mediaType}.
         - If Location is found: Confirm it ("Is this at [Location]?").
         - If Location is MISSING: Ask for it politely but urgently ("Please share the location").
         `;
@@ -163,7 +167,7 @@ async function processIncomingMessage(message, provider, metadata = {}) {
     let from, senderNumber;
 
     try {
-        let type, body, mediaId, mimeTypeRaw, mediaUrl = null;
+        let type, body, mediaId, mimeTypeRaw, mediaUrl = null, locationData = null;
 
         // 1. Parse Provider Data
         if (provider === 'whapi') {
@@ -171,6 +175,7 @@ async function processIncomingMessage(message, provider, metadata = {}) {
             from = message.chat_id || message.from;
             type = message.type;
             body = message.text?.body || "";
+            if (type === 'location') locationData = message.location;
         } else if (provider === 'meta') {
             senderNumber = message.from;
             from = message.from;
@@ -179,6 +184,7 @@ async function processIncomingMessage(message, provider, metadata = {}) {
             else if (type === 'image') { mediaId = message.image.id; mimeTypeRaw = message.image.mime_type; }
             else if (type === 'video') { mediaId = message.video.id; mimeTypeRaw = message.video.mime_type; }
             else if (type === 'audio') { mediaId = message.audio.id; mimeTypeRaw = message.audio.mime_type; }
+            else if (type === 'location') locationData = message.location;
         }
 
         console.log(`[MSG] From: ${senderNumber} | Type: ${type}`);
@@ -277,7 +283,57 @@ async function processIncomingMessage(message, provider, metadata = {}) {
         }
 
         // ==========================================
-        // SCENARIO B: MEDIA MESSAGES (NEW REPORT)
+        // SCENARIO B: LOCATION MESSAGES
+        // ==========================================
+        if (type === 'location' && locationData) {
+            // Handle Pending "Wait for Location"
+            if (pendingReport && (pendingReport.status === 'Draft_Waiting_Location' || pendingReport.status === 'Pending Address')) {
+                const lat = locationData.latitude;
+                const long = locationData.longitude;
+                // Whapi gives 'address', Meta might not, so we fallback
+                const address = locationData.address || locationData.name || `${lat}, ${long}`;
+
+                const finalStatus = pendingReport.aiConfidence >= 70 ? 'Verified' : 'Pending';
+                console.log(`[Status Calc] Confidence: ${pendingReport.aiConfidence}, Final Status: ${finalStatus}`);
+
+                const updates = {
+                    'location/latitude': lat,
+                    'location/longitude': long,
+                    'location/address': address,
+                    status: finalStatus,
+                    userName: waUserProfile.name || pendingReport.userName
+                };
+
+                await db.ref(`reports/${pendingReport.id}`).update(updates);
+                await db.ref(`reports/by_department/${(pendingReport.department || 'General').replace(/[\/\.#\$\[\]]/g, "_")}/${pendingReport.id}`).update(updates);
+
+                if (!waUserProfile.defaultAddress) await waUserRef.update({ defaultAddress: address });
+
+                // GENERATE AI REPLY (Success)
+                const successMsg = await getSmartReplyFromAI({
+                    type: 'report_success',
+                    data: { issue: pendingReport.type, address: address },
+                    userName: waUserProfile.name
+                });
+
+                await sendMessage(from, successMsg);
+
+                if (finalStatus === 'Verified') {
+                    exports.broadcastTargetedAlert(
+                        address,
+                        `🚨 *New Alert: ${pendingReport.type}*\n📍 ${address}`,
+                        from // Pass current user to receive the simulated broadcast
+                    );
+                }
+                return;
+            } else {
+                await sendMessage(from, "📍 Location received. Please send a photo of the issue first to start a report.");
+                return;
+            }
+        }
+
+        // ==========================================
+        // SCENARIO C: MEDIA MESSAGES (NEW REPORT)
         // ==========================================
         if (['image', 'video', 'audio', 'voice'].includes(type)) {
 
@@ -299,10 +355,12 @@ async function processIncomingMessage(message, provider, metadata = {}) {
 
             // 2. AI Analysis (Vision)
             let aiResult = { isReal: false };
+            let mimeType = 'image/jpeg'; // Default
+
             if (mediaBase64) {
                 const mimeMap = { image: 'image/jpeg', video: 'video/mp4', audio: 'audio/ogg', voice: 'audio/ogg' };
-                mimeTypeRaw = mimeTypeRaw || mimeMap[type];
-                aiResult = await analyzeMedia(mediaBase64, mimeTypeRaw);
+                mimeType = mimeTypeRaw || mimeMap[type] || 'application/octet-stream';
+                aiResult = await analyzeMedia(mediaBase64, mimeType);
             } else {
                 aiResult = { isReal: true, issue: "Report (Media Pending)", description: "Processing...", category: "General", priority: "Medium", confidence: 100 };
             }
@@ -312,15 +370,29 @@ async function processIncomingMessage(message, provider, metadata = {}) {
                 return;
             }
 
-            // 3. Save to DB
             const reportId = uuidv4();
+
+            // 3. Upload to Firebase Storage (Avoid saving Base64 in DB)
+            let publicMediaUrl = mediaUrl || "Pending";
+            if (mediaBase64) {
+                try {
+                    const { uploadBase64Media } = require('../services/storageService');
+                    publicMediaUrl = await uploadBase64Media(mediaBase64, mimeType, reportId);
+                    console.log(`[Storage] Uploaded media to: ${publicMediaUrl}`);
+                } catch (uploadErr) {
+                    console.error("[Storage] Upload failed, falling back to basic URL:", uploadErr);
+                }
+            }
+
+            // 4. Save to DB
             await db.ref(`reports/${reportId}`).set({
                 id: reportId,
                 type: aiResult.issue,
                 description: aiResult.description,
                 category: aiResult.category,
                 priority: aiResult.priority,
-                imageUrl: mediaBase64 ? `data:${mimeTypeRaw};base64,${mediaBase64}` : (mediaUrl || "Pending"),
+                imageUrl: publicMediaUrl, // Using Storage URL
+                mediaType: type, // Store type (video, audio, etc)
                 status: waUserProfile.name ? 'Draft_Waiting_Location' : 'Draft_Waiting_Name',
                 aiConfidence: aiResult.confidence,
                 aiAnalysis: JSON.stringify(aiResult),
@@ -329,7 +401,7 @@ async function processIncomingMessage(message, provider, metadata = {}) {
                 userName: waUserProfile.name || null
             });
 
-            // 4. GENERATE AI REPLY
+            // 5. GENERATE AI REPLY
             // If we don't know the name, ask for name
             if (!waUserProfile.name) {
                 const namePrompt = await getSmartReplyFromAI({
@@ -342,7 +414,7 @@ async function processIncomingMessage(message, provider, metadata = {}) {
                 // If we know name, generate full analysis response
                 const analysisReply = await getSmartReplyFromAI({
                     type: 'media_analysis',
-                    data: aiResult,
+                    data: { ...aiResult, mediaType: type },
                     userName: waUserProfile.name
                 });
                 await sendMessage(from, analysisReply);
@@ -403,8 +475,23 @@ exports.sendManualBroadcast = async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
-exports.broadcastTargetedAlert = async (targetLocation, message) => {
-    console.log(`[Mock Broadcast] To ${targetLocation}: ${message}`);
+exports.broadcastTargetedAlert = async (targetLocation, message, simulatedReceiver = null) => {
+    console.log(`[Broadcast System] Preparing alert for area: ${targetLocation}...`);
+
+    // Simulate processing delay (scanning user database for location matches)
+    setTimeout(async () => {
+        try {
+            console.log(`[Broadcast System] 📡 BROADCASTING NOW: "${message.split('\n')[0]}..."`);
+
+            // In production, this would query DB for users near 'targetLocation'
+            // For DEMO/TESTING: Send to the reporting user so they see the alert too
+            if (simulatedReceiver) {
+                await sendMessage(simulatedReceiver, `📢 *BROADCAST ALERT (Simulated)*\n\n${message}\n\n_(This alert was sent to all citizens in ${targetLocation})_`);
+            }
+        } catch (e) {
+            console.error("Broadcast Error:", e.message);
+        }
+    }, 3000); // 3 second delay
 };
 
 module.exports = exports;

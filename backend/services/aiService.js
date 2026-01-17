@@ -299,36 +299,34 @@ function parseGeminiResponse(response) {
         text = text.replace(/```json|```/g, '').trim();
         const jsonResult = JSON.parse(text);
 
-      const mapped = mapEventAndDepartment({
-    category: jsonResult.category || 'General',
-    description: jsonResult.description || ''
-});
+        const mapped = mapEventAndDepartment({
+            category: jsonResult.category || 'General',
+            description: jsonResult.description || ''
+        });
 
-return {
-    isReal: jsonResult.isReal || jsonResult.isValid,
-    fakeReason: jsonResult.fakeReason || (jsonResult.isValid ? null : "Verification failed"),
+        return {
+            isReal: jsonResult.isReal || jsonResult.isValid,
+            fakeReason: jsonResult.fakeReason || (jsonResult.isValid ? null : "Verification failed"),
 
-    // Existing fields (unchanged)
-    issue: jsonResult.issue || jsonResult.category || "General Issue",
-    explanation: jsonResult.description || jsonResult.issue,
-    description: jsonResult.description,
-    severity: jsonResult.priority || "Medium",
-    priority: jsonResult.priority || "Medium",
-    category: jsonResult.category || "General",
-    confidence: jsonResult.confidence || 80,
+            // Existing fields (unchanged)
+            issue: jsonResult.issue || jsonResult.category || "General Issue",
+            explanation: jsonResult.description || jsonResult.issue,
+            description: jsonResult.description,
+            severity: jsonResult.priority || "Medium",
+            priority: jsonResult.priority || "Medium",
+            category: jsonResult.category || "General",
+            confidence: (typeof jsonResult.confidence === 'object' ? jsonResult.confidence.overall : jsonResult.confidence) || 80,
 
-    // ✅ NEW FIELDS (THIS IS YOUR FEATURE)
-    eventType: mapped.eventType,
-    department: mapped.department,
-    aiSource: 'gemini-vertex'
-};
+            // ✅ NEW FIELDS (THIS IS YOUR FEATURE)
+            eventType: mapped.eventType,
+            department: mapped.department,
+            aiSource: 'gemini-vertex'
+        };
 
     } catch (e) {
         console.error("JSON Parse Error:", e);
         return { isReal: false, fakeReason: "Invalid AI Response Format" };
     }
-<<<<<<< HEAD
-=======
 }
 
 
@@ -358,5 +356,4 @@ function mapEventAndDepartment({ category, description }) {
     }
 
     return { eventType: 'General Civic Issue', department: 'General' };
->>>>>>> pshx09
 }
