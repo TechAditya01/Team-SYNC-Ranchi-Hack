@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CivicLayout from './CivicLayout';
-import { verifyImageWithAI, submitReportToBackend } from '../../services/backendService';
+import { verifyImageWithAI, submitReportToBackend, detectLocationFromTextBackend } from '../../services/backendService';
+import EXIF from 'exif-js';
 import { uploadImage } from '../../services/storageService';
 import { auth } from '../../services/firebase';
 import { GoogleMap, Marker, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
@@ -21,10 +22,11 @@ const ReportIssue = () => {
     const [selectedImage, setSelectedImage] = useState(null);
     const [imageFile, setImageFile] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
+    const [detectingLocation, setDetectingLocation] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [category, setCategory] = useState(null);
     const [department, setDepartment] = useState('');
-    const [location, setLocation] = useState({ lat: null, lng: null, address: 'Detecting location...' });
+    const [location, setLocation] = useState({ lat: null, lng: null, address: 'Detecting location...', ward: 'Unknown', source: 'GPS' });
     const [map, setMap] = useState(null);
     const [searchResult, setSearchResult] = useState(null);
 
@@ -35,17 +37,31 @@ const ReportIssue = () => {
     });
 
     // --- 1. Geocoding Function (Lat/Lng -> Address) ---
+    // --- 1. Geocoding Function (Lat/Lng -> Address + Ward) ---
     const fetchAddress = useCallback((lat, lng) => {
         if (!window.google || !window.google.maps || !window.google.maps.Geocoder) return;
 
         const geocoder = new window.google.maps.Geocoder();
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
             if (status === "OK" && results[0]) {
+                const components = results[0].address_components;
+                let detectedWard = 'Unknown';
+
+                // Heuristic for Ward in India: Sublocality Level 1 or Neighborhood
+                const subLocality = components.find(c => c.types.includes('sublocality_level_1'));
+                const neighborhood = components.find(c => c.types.includes('neighborhood'));
+                const locality = components.find(c => c.types.includes('locality'));
+
+                if (subLocality) detectedWard = subLocality.long_name;
+                else if (neighborhood) detectedWard = neighborhood.long_name;
+                else if (locality) detectedWard = locality.long_name;
+
                 setLocation(prev => ({
                     ...prev,
                     lat,
                     lng,
-                    address: results[0].formatted_address
+                    address: results[0].formatted_address,
+                    ward: detectedWard
                 }));
             } else {
                 console.warn("Geocoder failed:", status);
@@ -73,7 +89,7 @@ const ReportIssue = () => {
                     };
 
                     // Update state with coordinates immediately
-                    setLocation(prev => ({ ...prev, ...pos, address: 'Fetching address...' }));
+                    setLocation(prev => ({ ...prev, ...pos, address: 'Fetching address...', source: 'GPS' }));
 
                     // If Google Maps API is loaded, fetch the address text
                     if (window.google?.maps?.Geocoder) {
@@ -139,10 +155,34 @@ const ReportIssue = () => {
         setSearchResult(autocomplete);
     };
 
-    // --- 5. Form & Image Handlers ---
+    // --- 5. Form & Image Handlers & GPS Extraction ---
+    const handleExtractGPS = (file) => {
+        EXIF.getData(file, function () {
+            const latData = EXIF.getTag(this, "GPSLatitude");
+            const lngData = EXIF.getTag(this, "GPSLongitude");
+            const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+            const lngRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+            if (latData && lngData) {
+                const toDecimal = (number) => number[0] + number[1] / 60 + number[2] / 3600;
+                let lat = toDecimal(latData);
+                let lng = toDecimal(lngData);
+
+                if (latRef === "S") lat = -lat;
+                if (lngRef === "W") lng = -lng;
+
+                console.log("[EXIF] Found GPS:", lat, lng);
+                toast.success("Location found in image! Map updated.");
+                setLocation(prev => ({ ...prev, lat, lng, address: 'Fetching address from image...', source: 'EXIF' }));
+                fetchAddress(lat, lng);
+            }
+        });
+    };
+
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (file) {
+            handleExtractGPS(file); // Try to get GPS
             setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => setSelectedImage(reader.result);
@@ -185,6 +225,68 @@ const ReportIssue = () => {
         }
     };
 
+    const handleTextLocationDetect = async () => {
+        const text = document.querySelector('textarea[name="description"]').value;
+        if (!text || text.length < 5) {
+            toast.error("Please enter a description first.");
+            return;
+        }
+
+        setDetectingLocation(true);
+        try {
+            const result = await detectLocationFromTextBackend(text);
+
+            if (result.found && result.location_string) {
+                if (window.google?.maps?.Geocoder) {
+                    const geocoder = new window.google.maps.Geocoder();
+                    geocoder.geocode(
+                        { address: result.location_string, componentRestrictions: { country: 'IN' } },
+                        (results, status) => {
+                            if (status === 'OK' && results[0]) {
+                                const lat = results[0].geometry.location.lat();
+                                const lng = results[0].geometry.location.lng();
+
+                                console.log("AI Location Resolved:", result.location_string, lat, lng);
+                                toast.success(`Mapped to: ${result.location_string}`);
+
+                                if (map) {
+                                    map.panTo({ lat, lng });
+                                    map.setZoom(17);
+                                }
+
+                                // Extract ward from Google components to be safe
+                                const components = results[0].address_components;
+                                const subLocality = components.find(c => c.types.includes('sublocality_level_1'))?.long_name;
+                                const neighborhood = components.find(c => c.types.includes('neighborhood'))?.long_name;
+
+                                // Priority: AI Ward > Google Sublocality > Google Neighborhood
+                                const finalWard = result.ward || subLocality || neighborhood || 'Unknown';
+
+                                setLocation(prev => ({
+                                    ...prev,
+                                    lat,
+                                    lng,
+                                    address: results[0].formatted_address,
+                                    ward: finalWard,
+                                    source: 'AI_TEXT'
+                                }));
+                            } else {
+                                toast.error(`Found "${result.location_string}" but couldn't place it on map.`);
+                            }
+                        }
+                    );
+                }
+            } else {
+                toast.error("No specific location found in text.");
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error("Location analysis failed.");
+        } finally {
+            setDetectingLocation(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -197,7 +299,13 @@ const ReportIssue = () => {
                 type: category || 'General',
                 department: department,
                 description: e.target.elements.description.value,
-                location: { lat: location.lat, lng: location.lng, address: location.address },
+                location: {
+                    lat: location.lat,
+                    lng: location.lng,
+                    address: location.address,
+                    ward: location.ward,
+                    source: location.source
+                },
                 imageUrl: imageUrl,
                 aiVerified: aiResult?.isVerified || false,
                 aiAnalysis: aiResult?.detected || 'No analysis available',
@@ -235,6 +343,18 @@ const ReportIssue = () => {
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
                                     <MapPin size={20} className="text-blue-500" /> Detected Location
+                                </div>
+                                <div className="flex gap-2">
+                                    {location.source && location.source !== 'GPS' && (
+                                        <span className="text-[10px] font-bold bg-purple-100 text-purple-600 px-2 py-1 rounded-full uppercase tracking-wider">
+                                            Via {location.source}
+                                        </span>
+                                    )}
+                                    {location.ward && location.ward !== 'Unknown' && (
+                                        <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-2 py-1 rounded-full uppercase tracking-wider">
+                                            {location.ward}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -359,10 +479,21 @@ const ReportIssue = () => {
 
                             {/* Description */}
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Description (Optional)</label>
+                                <div className="flex justify-between items-center mb-3">
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Description (Optional)</label>
+                                    <button
+                                        type="button"
+                                        onClick={handleTextLocationDetect}
+                                        disabled={detectingLocation}
+                                        className="text-xs flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-1.5 rounded-lg font-bold transition-colors disabled:opacity-50"
+                                    >
+                                        {detectingLocation ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
+                                        Detect Location from Text
+                                    </button>
+                                </div>
                                 <textarea
                                     name="description"
-                                    placeholder="Describe the issue... (e.g., 'Big pothole on Main St')"
+                                    placeholder="Describe the issue... (e.g., 'Big pothole on Main Road near Albert Ekka Chowk, Ward 5')"
                                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 focus:ring-2 focus:ring-blue-500 outline-none resize-none h-32 text-slate-700 dark:text-slate-300"
                                 ></textarea>
                             </div>

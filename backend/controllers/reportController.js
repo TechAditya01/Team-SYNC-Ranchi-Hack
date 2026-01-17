@@ -123,6 +123,50 @@ exports.verifyReportImage = async (req, res) => {
     }
 };
 
+exports.detectLocationFromText = async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: "No text provided" });
+
+    try {
+        console.log("[AI] Analyzing text for location:", text);
+        const prompt = `
+            You are a Geographic Entity Extractor for a Smart City App.
+            Analyze the following user report description and extract location details.
+
+            USER TEXT: "${text}"
+
+            Identify:
+            1. Specific Landmarks or Address (e.g., "Near Albert Ekka Chowk", "Main Road opposite Big Bazaar")
+            2. Ward Name or Number if mentioned (e.g., "Ward 5", "Kokar Area")
+
+            RETURN JSON ONLY in this format:
+            {
+                "found": boolean,
+                "location_string": "Optimized search string for Google Maps",
+                "ward": "Inferred Ward/Area name" or null,
+                "confidence": "High" | "Medium" | "Low"
+            }
+            
+            If no location is mentioned, set "found": false.
+        `;
+
+        const result = await generativeModel.generateContent(prompt);
+        const response = await result.response;
+        const rawText = response.candidates[0].content.parts[0].text;
+
+        // Clean JSON
+        let jsonStr = rawText;
+        if (rawText.includes("```")) {
+            jsonStr = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)?.[1] || rawText;
+        }
+
+        res.status(200).json(JSON.parse(jsonStr.trim()));
+    } catch (error) {
+        console.error("Location Detection Error:", error);
+        res.status(500).json({ error: "AI Analysis Failed" });
+    }
+};
+
 exports.createReport = async (req, res) => {
     const reportData = req.body;
     const { userId } = reportData;

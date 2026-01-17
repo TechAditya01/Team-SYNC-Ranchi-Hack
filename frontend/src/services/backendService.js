@@ -43,3 +43,19 @@ export const submitReportToBackend = async (data) => {
     if (!response.ok) throw new Error(result.error || "Failed to create report");
     return result;
 };
+
+export const detectLocationFromTextBackend = async (text) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/reports/detect-location`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to detect location");
+        return result;
+    } catch (error) {
+        console.error("Detect Location Error:", error);
+        throw error;
+    }
+};
