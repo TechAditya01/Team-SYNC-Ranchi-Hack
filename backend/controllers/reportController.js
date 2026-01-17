@@ -1,6 +1,8 @@
 const { VertexAI } = require('@google-cloud/vertexai');
 const { db } = require('../config/firebase');
-const turf = require('@turf/turf');
+const { point } = require('@turf/helpers');
+const turfDistance = require('@turf/distance');
+const distance = turfDistance.default || turfDistance;
 
 // Initialize Vertex AI
 const vertex_ai = new VertexAI({
@@ -399,7 +401,7 @@ exports.getNearbyReports = async (req, res) => {
         const nearby = [];
 
         // Turf uses [lng, lat] order
-        const center = turf.point([centerLng, centerLat]);
+        const center = point([centerLng, centerLat]);
 
         Object.keys(allReports).forEach(key => {
             const r = allReports[key];
@@ -410,11 +412,11 @@ exports.getNearbyReports = async (req, res) => {
                 // Ensure report coordinates are valid
                 if (!isNaN(reportLat) && !isNaN(reportLng) && reportLat !== 0) {
                     try {
-                        const target = turf.point([reportLng, reportLat]);
-                        const distance = turf.distance(center, target, { units: 'kilometers' });
+                        const target = point([reportLng, reportLat]);
+                        const distanceKm = distance(center, target, { units: 'kilometers' });
 
-                        if (distance <= parseFloat(radius)) {
-                            nearby.push({ id: key, ...r, distance: distance.toFixed(2) });
+                        if (distanceKm <= parseFloat(radius)) {
+                            nearby.push({ id: key, ...r, distance: distanceKm.toFixed(2) });
                         }
                     } catch (geoErr) {
                         console.warn(`[GEO_SKIP] Failed to calculate dist for report ${key}:`, geoErr.message);
