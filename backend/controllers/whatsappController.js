@@ -76,7 +76,7 @@ async function downloadMetaMedia(mediaId) {
 }
 
 // ==========================================
-// NEW: DYNAMIC AI GENERATOR (No Hardcoding)
+
 /**
  * Asks the AI to generate a reply based on the context.
  * @param {Object} context - { type: 'media_analysis'|'text_reply', data: object, userName: string }
@@ -476,22 +476,122 @@ exports.sendManualBroadcast = async (req, res) => {
 };
 
 exports.broadcastTargetedAlert = async (targetLocation, message, simulatedReceiver = null) => {
-    console.log(`[Broadcast System] Preparing alert for area: ${targetLocation}...`);
+    console.log(`[Broadcast System] 📡 Searching for users in area: ${targetLocation}`);
 
-    // Simulate processing delay (scanning user database for location matches)
-    setTimeout(async () => {
-        try {
-            console.log(`[Broadcast System] 📡 BROADCASTING NOW: "${message.split('\n')[0]}..."`);
+    try {
+        const usersToNotify = new Set();
+        const emailsToNotify = new Set();
 
-            // In production, this would query DB for users near 'targetLocation'
-            // For DEMO/TESTING: Send to the reporting user so they see the alert too
-            if (simulatedReceiver) {
-                await sendMessage(simulatedReceiver, `📢 *BROADCAST ALERT (Simulated)*\n\n${message}\n\n_(This alert was sent to all citizens in ${targetLocation})_`);
-            }
-        } catch (e) {
-            console.error("Broadcast Error:", e.message);
+        if (simulatedReceiver) {
+            if (simulatedReceiver.includes('@')) usersToNotify.add(simulatedReceiver.split('@')[0]);
+            else usersToNotify.add(simulatedReceiver);
         }
-    }, 3000); // 3 second delay
+
+        // 1. Fetch WhatsApp registered users
+        const waProfilesSnap = await db.ref('users/whatsapp_profiles').once('value');
+        if (waProfilesSnap.exists()) {
+            const profiles = waProfilesSnap.val();
+            Object.values(profiles).forEach(user => {
+                const userLoc = (user.defaultAddress || "").toLowerCase();
+                const target = targetLocation.toLowerCase();
+                if (userLoc.includes(target) || target.includes(userLoc)) {
+                    usersToNotify.add(user.phone);
+                    if (user.email) emailsToNotify.add(user.email);
+                }
+            });
+        }
+
+        // 2. Fetch Registry users (broadcast_list & registry)
+        const registrySnap = await db.ref('users/registry').once('value');
+        if (registrySnap.exists()) {
+            const list = registrySnap.val();
+            Object.values(list).forEach(user => {
+                const userLoc = (user.address || "").toLowerCase();
+                const target = targetLocation.toLowerCase();
+                if (userLoc.includes(target) || target.includes(userLoc)) {
+                    if (user.mobile) usersToNotify.add(user.mobile.replace(/\D/g, ''));
+                    if (user.email) emailsToNotify.add(user.email);
+                }
+            });
+        }
+
+        console.log(`[Broadcast System] Found ${usersToNotify.size} WhatsApp targets and ${emailsToNotify.size} Email targets in/near ${targetLocation}`);
+
+        // 3. Send WhatsApp Messages
+        for (const phone of usersToNotify) {
+            const target = phone.includes('@') ? phone : `${phone}@s.whatsapp.net`;
+            await sendMessage(target, message);
+        }
+
+        // 4. Send Email Alerts
+        if (emailsToNotify.size > 0) {
+            const nodemailer = require('nodemailer');
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+
+            const emailHtml = `
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div style="background: linear-gradient(135deg, #d9534f 0%, #c9302c 100%); padding: 30px; text-align: center; color: white;">
+                        <h1 style="margin: 0; font-size: 24px;">🚨 OFFICIAL CIVIC ALERT</h1>
+                        <p style="margin: 10px 0 0 0; opacity: 0.9;">Nagar Alert Hub | Emergency Broadcast</p>
+                    </div>
+                    <div style="padding: 30px; background: #ffffff; color: #333333; line-height: 1.6;">
+                        <p style="font-size: 18px; margin-top: 0;"><strong>Active Incident in ${targetLocation}</strong></p>
+                        <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;">
+                        <div style="background: #fff5f5; border-left: 4px solid #d9534f; padding: 20px; border-radius: 4px; margin-bottom: 25px;">
+                            <p style="margin: 0; white-space: pre-wrap;">${message.replace(/📢|🚨|📍|⚠️|✅/g, '')}</p>
+                        </div>
+                        <p style="font-size: 14px; color: #666;">This alert was sent automatically based on your registered location. Please stay safe and follow official instructions.</p>
+                        <div style="text-align: center; margin-top: 30px;">
+                            <a href="https://nagaralert.vercel.app" style="background: #333; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View Live Dashboard</a>
+                        </div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eeeeee;">
+                        &copy; 2026 Nagar Alert Ranchi Hackathon Team SYNC. All rights reserved.
+                    </div>
+                </div>
+            `;
+
+            for (const email of emailsToNotify) {
+                try {
+                    await transporter.sendMail({
+                        from: '"Nagar Alert Hub" <hacksindiaranchi@gmail.com>',
+                        to: email,
+                        subject: `🚨 CIVIC ALERT: ${targetLocation}`,
+                        html: emailHtml
+                    });
+                    console.log(`[Broadcast System] 📧 Email sent to: ${email}`);
+                } catch (emailErr) {
+                    console.error(`[Broadcast System] Email failure for ${email}:`, emailErr.message);
+                }
+            }
+        }
+
+        // 5. Save to Dashboard History (broadcasts node)
+        try {
+            await db.ref('broadcasts').push({
+                area: targetLocation,
+                type: 'Automated Multi-Channel Alert',
+                message: message,
+                sender: 'System Bot',
+                reach: usersToNotify.size + emailsToNotify.size,
+                status: 'Sent',
+                timestamp: new Date().toISOString()
+            });
+        } catch (dbErr) {
+            console.error("[Broadcast System] History Save Failed:", dbErr.message);
+        }
+
+        return usersToNotify.size + emailsToNotify.size;
+    } catch (e) {
+        console.error("[Broadcast System] Fatal Error:", e.message);
+        return 0;
+    }
 };
 
 module.exports = exports;
