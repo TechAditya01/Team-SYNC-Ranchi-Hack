@@ -11,6 +11,7 @@ const vertex_ai = new VertexAI({
 });
 
 // --- FASTEST AVAILABLE MODEL ---
+// --- FASTEST AVAILABLE MODEL ---
 // Using Gemini 2.0 Flash (Version 001) for maximum speed
 const modelName = 'gemini-2.0-flash-001';
 console.log(`🚀 Speed Mode: Vertex AI Controller using '${modelName}'`);
@@ -32,180 +33,52 @@ exports.verifyReportImage = async (req, res) => {
     const { imageBase64, type } = req.body;
 
     if (!imageBase64) {
-        return res.status(400).json({ error: "No image provided" });
+        return res.status(400).json({ error: "No image/media provided" });
     }
 
     if (!process.env.GEMINI_API_KEY) {
-        console.error("[AI ERROR] GEMINI_API_KEY is missing in .env");
-        return res.status(500).json({ error: "AI Backend not configured (Missing API Key)" });
+        // Warning only, as we use Vertex AI service account primarily
+        console.warn("[AI WARNING] GEMINI_API_KEY missing - relying on Vertex AI credentials");
     }
 
     try {
-        console.log("[AI] Analyzing image with enhanced event detection...");
+        console.log("[AI] Analyzing media for type:", type);
 
         const prompt = `
-You are an advanced civic issue detection AI with comprehensive visual analysis capabilities.
-Analyze this image in extreme detail and provide a complete overview.
+  You are a filtering algorithm designed to REJECT Stock Photos and Staged Images.
+  Do not act as a "helper". Your job is to BLOCK fake reports.
 
-COMPREHENSIVE ANALYSIS REQUIREMENTS:
+  Analyze the visual style of this media (image/video).
 
-1. **IMAGE OVERVIEW & VISUAL DETAILS:**
-   - **Scene Description**: Describe the entire scene in detail (what you see, background, foreground, surroundings)
-   - **Primary Objects**: List all major objects/elements visible in the image
-   - **Visual Composition**: Image framing, angle, perspective, focal point
-   - **Colors & Lighting**: Dominant colors, lighting conditions, shadows, brightness
-   - **Environmental Context**: Urban/rural, street/building, indoor/outdoor, weather conditions
-   - **Time Estimation**: Approximate time of day (morning/afternoon/evening/night)
-   - **Location Characteristics**: Type of area (residential, commercial, industrial, highway, etc.)
-   - **Visible Text/Signs**: Any text, signs, landmarks, or identifiable markers
-   - **People/Vehicles**: Presence of people, vehicles, or movement
-   - **Image Quality**: Resolution, clarity, blur, noise, camera quality assessment
+  CRITICAL FAIL CONDITIONS (If any are true, verified = false):
+  1. **Cinematic Lighting:** Is there dramatic blue/orange lighting, backlighting, or perfect studio lighting? (Real civic photos are flat/dull).
+  2. **Staged Action:** Does it look like a movie scene? (e.g. A burglar in a mask "sneaking", a model posing)?
+  3. **High Production Value:** Is the image/video sharp, perfectly framed, with artistic bokeh (blur)? (Real citizen photos are often blurry, messy, and poorly framed).
+  4. **Digital Marks:** Watermarks, text overlays, UI bars (screenshots).
 
-2. **DETAILED ISSUE ANALYSIS:**
-   - **Issue Visibility**: How clearly is the problem visible (0-100%)
-   - **Issue Size/Scale**: Approximate dimensions or extent of the problem
-   - **Issue Severity Visual Indicators**: Visual cues showing severity (cracks, damage extent, etc.)
-   - **Surrounding Impact**: How the issue affects the surrounding area
-   - **Before/After Indicators**: Signs of recent damage or long-standing issue
-   - **Comparative Context**: Size relative to known objects (person, vehicle, etc.)
+  If it looks like a Stock Photo or Movie Scene, you MUST REJECT it. 
+  "Stock photo of a burglar" is NOT a valid report. It is a FAKE.
 
-3. **AUTHENTICITY CHECK:**
-   - Is this a real photograph taken by a citizen?
-   - Reject if: Stock photo, staged scene, screenshot, watermarked, AI-generated, or unrelated content
-   - Accept only: Genuine, amateur-quality photos of real civic issues
-   - **Photo Metadata Indicators**: Camera artifacts, compression, natural lighting
+  Only accept the media if it looks like a **boring, amateur, low-quality** recording by a citizen.
 
-4. **EVENT DETECTION:**
-   - Identify the primary civic issue/event in the image
-   - Classify the event type (Infrastructure Damage, Public Safety, Environmental, Health Hazard, etc.)
-   - Detect any secondary issues visible in the image
-   - **Root Cause Analysis**: Possible causes of the issue (wear, accident, weather, etc.)
+  If valid (Real):
+  Identify the department: Municipal/Waste, Roads & Transport, Electricity Board, Water Supply, Traffic, Fire & Safety, Medical/Ambulance, Police.
 
-5. **DETAILED CLASSIFICATION:**
-   - **Category**: Road/Garbage/Water/Electricity/Noise/Traffic/Fire/Medical/Police/Other
-   - **Sub-Category**: Specific issue type (e.g., "Pothole", "Broken Streetlight", "Water Leak")
-   - **Severity**: Low/Medium/High/Critical
-   - **Urgency**: Immediate/Within 24hrs/Within Week/Routine
-   - **Affected Infrastructure**: What is damaged or affected
-   - **Potential Risks**: Safety hazards, health risks, environmental impact
-   - **Estimated Impact**: Number of people/area affected
-
-6. **DEPARTMENT ROUTING:**
-   - Primary Department: Municipal/Waste, Roads & Transport, Electricity Board, Water Supply, Traffic, Fire & Safety, Medical/Ambulance, Police
-   - Secondary Department (if applicable)
-   - Escalation Required: Yes/No
-
-7. **ACTIONABLE INSIGHTS:**
-   - Recommended immediate actions
-   - Estimated resolution time
-   - Required resources/equipment
-   - Similar incidents in area (if detectable)
-
-8. **CONFIDENCE METRICS:**
-   - Overall confidence: ALWAYS use 80-95 range for ALL images
-   - Detection accuracy: ALWAYS use 80-95 range
-   - Classification reliability: ALWAYS use 80-95 range
-   - CRITICAL: ALL images must have confidence scores of 80 or above, regardless of quality or type
-
-RETURN COMPREHENSIVE JSON:
-{
-  "verified": boolean,
-  "imageOverview": {
-    "sceneDescription": "Detailed description of the entire scene",
-    "primaryObjects": ["array of main objects visible"],
-    "visualComposition": {
-      "framing": "Close-up/Medium/Wide shot",
-      "angle": "Eye-level/High/Low angle",
-      "perspective": "Straight-on/Angled/Bird's eye",
-      "focalPoint": "What draws attention"
-    },
-    "colorsAndLighting": {
-      "dominantColors": ["array of main colors"],
-      "lightingCondition": "Bright/Dim/Natural/Artificial",
-      "shadows": "Present/Absent/Harsh/Soft",
-      "overallBrightness": "Dark/Normal/Bright/Overexposed"
-    },
-    "environmentalContext": {
-      "setting": "Urban/Suburban/Rural",
-      "locationType": "Street/Highway/Residential/Commercial/Industrial/Park",
-      "indoorOutdoor": "Indoor/Outdoor",
-      "weatherCondition": "Clear/Cloudy/Rainy/Foggy/Unknown"
-    },
-    "timeEstimation": "Morning/Afternoon/Evening/Night/Dawn/Dusk",
-    "locationCharacteristics": "Detailed description of area type and characteristics",
-    "visibleTextSigns": ["array of any visible text, signs, or landmarks"],
-    "peopleVehicles": {
-      "peoplePresent": boolean,
-      "vehiclesPresent": boolean,
-      "movementDetected": boolean,
-      "crowdLevel": "None/Low/Medium/High"
-    },
-    "imageQuality": {
-      "resolution": "Low/Medium/High",
-      "clarity": "Blurry/Acceptable/Sharp",
-      "noise": "High/Medium/Low/None",
-      "cameraQuality": "Poor/Average/Good/Professional"
-    }
-  },
-  "detailedIssueAnalysis": {
-    "issueVisibility": number (0-100),
-    "issueSize": "Approximate dimensions or description",
-    "severityIndicators": ["array of visual cues showing severity"],
-    "surroundingImpact": "How issue affects surroundings",
-    "ageOfIssue": "Recent/Days old/Weeks old/Long-standing",
-    "comparativeContext": "Size comparison with known objects",
-    "visualEvidence": ["array of specific visual evidence points"]
-  },
-  "authenticity": {
-    "isReal": boolean,
-    "rejectionReason": "string or null",
-    "imageQuality": "Low/Medium/High",
-    "timestamp": "Estimated time of capture (Day/Night/Recent/Old)",
-    "photoMetadata": "Natural/Edited/Suspicious/Genuine"
-  },
-  "eventDetection": {
-    "primaryEvent": "Main issue detected",
-    "eventType": "Infrastructure/Safety/Environmental/Health/Emergency",
-    "secondaryIssues": ["array of other visible issues"],
-    "eventDescription": "Detailed description of what is seen",
-    "rootCauseAnalysis": "Possible causes of the issue"
-  },
-  "classification": {
-    "category": "Primary category",
-    "subCategory": "Specific issue type",
-    "severity": "Low/Medium/High/Critical",
-    "urgency": "Immediate/24hrs/Week/Routine",
-    "affectedInfrastructure": "What is damaged",
-    "potentialRisks": ["array of risks"],
-    "estimatedImpact": "Description of impact area/people"
-  },
-  "departmentRouting": {
-    "primaryDepartment": "Department name",
-    "secondaryDepartment": "Department name or null",
-    "escalationRequired": boolean,
-    "escalationReason": "Why escalation is needed or null"
-  },
-  "actionableInsights": {
-    "immediateActions": ["array of recommended actions"],
-    "estimatedResolutionTime": "Time estimate",
-    "requiredResources": ["array of resources needed"],
-    "priority": "1-5 scale"
-  },
-  "confidence": {
-    "overall": number (80-95, ALWAYS),
-    "detectionAccuracy": number (80-95, ALWAYS),
-    "classificationReliability": number (80-95, ALWAYS)
-  },
-  "detected_issue": "Short title",
-  "explanation": "ACCEPTED: Detailed explanation OR REJECTED: Reason",
-  "department": "Primary department name",
-  "ai_confidence": number (80-95, ALWAYS - must match confidence.overall)
-}
+  RETURN JSON ONLY:
+  {
+    "verified": boolean,
+    "department": "Name" or null,
+    "detected_issue": "Short Title",
+    "explanation": "REJECTED: [Reason] OR ACCEPTED: [Description]",
+    "severity": "Low" | "Medium" | "High" | "Critical",
+    "ai_confidence": number
+  }
 `;
 
         // Detect mime type
         const mimeType = imageBase64.match(/^data:([^;]+);base64,/)?.[1] || "image/jpeg";
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+        // FIX: Correctly strip metadata for ANY mime type (video, audio, etc)
+        const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, "");
 
         const request = {
             contents: [{
@@ -220,7 +93,7 @@ RETURN COMPREHENSIVE JSON:
         const result = await generativeModel.generateContent(request);
         const response = await result.response;
         const text = response.candidates[0].content.parts[0].text;
-        console.log("[AI ENHANCED RESPONSE]:", text.substring(0, 500) + "...");
+        console.log("[AI RAW RESPONSE]:", text);
 
         // More robust JSON extraction
         let jsonStr = text;
@@ -230,49 +103,6 @@ RETURN COMPREHENSIVE JSON:
         jsonStr = jsonStr.trim();
 
         const analysis = JSON.parse(jsonStr);
-
-        // ---------------------------------------------------------
-        // 🛡️ FAILSAFE: CONFIDENCE SCORE ENFORCEMENT
-        // ---------------------------------------------------------
-
-        // 1. Extract raw score
-        let rawScore = analysis.confidence?.overall || analysis.ai_confidence || 0;
-
-        // 2. Fix Decimal vs Integer (e.g., converts 0.95 to 95)
-        if (rawScore <= 1 && rawScore > 0) {
-            rawScore = rawScore * 100;
-            console.log(`[AI FIX] Converted decimal ${rawScore / 100} to percentage ${rawScore}%`);
-        }
-
-        // 3. Force High Score if Verified (The "Confidence Boost")
-        // If the AI says it's verified, we NEVER allow a score below 80
-        if (analysis.verified === true) {
-            if (rawScore < 80) {
-                // Generate a random realistic score between 88 and 98
-                rawScore = Math.floor(Math.random() * (98 - 88 + 1)) + 88;
-                console.log(`[AI FIX] Low confidence detected on verified image. Boosted to ${rawScore}%`);
-            }
-        }
-
-        // 4. Update the object with the fixed numbers
-        analysis.confidence = {
-            ...analysis.confidence,
-            overall: rawScore,
-            detectionAccuracy: rawScore, // Sync these for consistency
-            classificationReliability: rawScore > 90 ? rawScore - 2 : rawScore
-        };
-        analysis.ai_confidence = rawScore; // Important: Ensure root level key exists
-
-        // ---------------------------------------------------------
-
-        console.log(`[AI FINAL] Verified: ${analysis.verified}, Score: ${analysis.ai_confidence}%`);
-        console.log("[AI CONFIDENCE DATA]:", {
-            ai_confidence: analysis.ai_confidence,
-            confidence_object: analysis.confidence,
-            detected_issue: analysis.detected_issue,
-            explanation: analysis.explanation
-        });
-
         res.status(200).json({ analysis });
 
     } catch (error) {
@@ -324,6 +154,7 @@ exports.detectLocationFromText = async (req, res) => {
         res.status(500).json({ error: "AI Analysis Failed" });
     }
 };
+
 
 exports.createReport = async (req, res) => {
     const reportData = req.body;

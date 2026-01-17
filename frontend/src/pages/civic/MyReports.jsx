@@ -40,7 +40,9 @@ const MyReports = () => {
                         status: r.status,
                         severity: r.priority || 'Normal',
                         department: r.department || 'General',
-                        imageUrl: r.imageUrl || null
+                        imageUrl: r.imageUrl || r.mediaUrl || null,
+                        mediaType: r.mediaType || 'image',
+                        mediaUrl: r.mediaUrl || r.imageUrl || null
                     })));
                 } else {
                     setReports([]);
@@ -221,10 +223,30 @@ const MyReports = () => {
                                 {/* Left Section */}
                                 <div className="flex items-start gap-4 flex-1">
                                     {/* Image/Icon */}
-                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600">
-                                        {report.imageUrl ? (
+                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-slate-600 relative">
+                                        {report.mediaType === 'video' ? (
+                                            <div className="w-full h-full bg-black flex items-center justify-center">
+                                                <video
+                                                    src={report.mediaUrl}
+                                                    className="w-full h-full object-cover opacity-80"
+                                                    muted
+                                                />
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="w-6 h-6 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                                                        <div className="w-0 h-0 border-t-[4px] border-t-transparent border-l-[8px] border-l-white border-b-[4px] border-b-transparent ml-0.5"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : report.mediaType === 'audio' ? (
+                                            <div className="w-full h-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                                                <div className="flex flex-col items-center">
+                                                    <div className="w-1 bg-purple-500 h-3 animate-pulse"></div>
+                                                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 mt-1">AUDIO</span>
+                                                </div>
+                                            </div>
+                                        ) : report.mediaUrl ? (
                                             <img
-                                                src={report.imageUrl}
+                                                src={report.mediaUrl}
                                                 alt={report.type}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
@@ -234,9 +256,10 @@ const MyReports = () => {
                                                 }}
                                             />
                                         ) : null}
+
                                         <div
-                                            className="w-full h-full flex items-center justify-center text-2xl"
-                                            style={{ display: report.imageUrl ? 'none' : 'flex' }}
+                                            className="w-full h-full absolute inset-0 flex items-center justify-center text-2xl bg-slate-100 dark:bg-slate-700"
+                                            style={{ display: (report.mediaUrl || report.mediaType === 'video' || report.mediaType === 'audio') ? 'none' : 'flex' }}
                                         >
                                             {report.type?.toLowerCase() === 'pothole' ? '🚧' :
                                                 report.type?.toLowerCase() === 'garbage' ? '🗑️' :

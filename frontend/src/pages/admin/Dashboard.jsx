@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-import { MoreVertical, MapPin, AlertTriangle, CheckCircle, Sparkles, Plus, Search, Maximize2, X, Send, ThumbsDown, CheckSquare, Clock, Video, AlignLeft } from 'lucide-react';
-=======
-import { MoreVertical, MapPin, AlertTriangle, CheckCircle, Sparkles, Plus, Search, Maximize2, X, Send, ThumbsDown, CheckSquare, Clock, Video, ChevronRight } from 'lucide-react';
->>>>>>> pshx09
+import { MoreVertical, MapPin, AlertTriangle, CheckCircle, Sparkles, Plus, Search, Maximize2, X, Send, ThumbsDown, CheckSquare, Clock, Video, AlignLeft, ChevronRight } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import { getDatabase, ref, onValue, update } from 'firebase/database';
@@ -400,8 +396,8 @@ const AdminDashboard = () => {
                                                                                         <div className="flex justify-between items-center mb-0.5">
                                                                                             <h4 className="font-medium text-white text-xs truncate pr-2 capitalize leading-tight">{r.type || 'Incident'}</h4>
                                                                                             <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${r.status === 'Resolved' ? 'bg-green-500/20 text-green-400' :
-                                                                                                    r.status === 'Pending' ? 'bg-orange-500/20 text-orange-400' :
-                                                                                                        'bg-blue-500/20 text-blue-400'
+                                                                                                r.status === 'Pending' ? 'bg-orange-500/20 text-orange-400' :
+                                                                                                    'bg-blue-500/20 text-blue-400'
                                                                                                 }`}>
                                                                                                 {r.status}
                                                                                             </span>
@@ -478,6 +474,7 @@ const AdminDashboard = () => {
                                                 status={report.status || "Pending"}
                                                 isSelected={selectedIncident?.id === report.id}
                                                 onClick={() => setSelectedIncident(report)}
+                                                navigate={navigate}
                                             />
                                         ))}
                                         {recentReports.length === 0 && (
@@ -699,7 +696,7 @@ const StatCard = ({ label, value, sub, subColor, icon }) => (
     </div>
 );
 
-const TableRow = ({ id, address, img, type, priority, status, isSelected, onClick, mediaType }) => {
+const TableRow = ({ id, address, img, type, priority, status, isSelected, onClick, mediaType, navigate }) => {
     return (
         <tr
             onClick={onClick}

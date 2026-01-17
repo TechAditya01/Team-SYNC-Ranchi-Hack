@@ -50,6 +50,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/whatsapp', require('./routes/whatsappRoutes'));
+app.use('/api/alerts', require('./routes/alertRoutes'));
 
 // 2. Health Check
 app.get('/', (req, res) => {

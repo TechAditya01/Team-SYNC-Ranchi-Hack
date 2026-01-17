@@ -115,17 +115,20 @@ const LiveMap = () => {
         });
     }, []);
 
-<<<<<<< HEAD
-    const filteredPins = pins.filter(pin => {
-        if (filterType === 'all') return pin.status !== 'Resolved';
-        if (filterType === 'critical') {
-            return ['Fire & Safety', 'Medical/Ambulance', 'Police'].includes(pin.department) ||
-                pin.priority === 'Critical' ||
-                pin.type === 'SOS Emergency';
-        }
-        return pin.type?.toLowerCase() === filterType;
-    });
+    // --- 1. Filter Logic ---
+    const filteredPins = React.useMemo(() => {
+        return pins.filter(pin => {
+            if (filterType === 'all') return pin.status !== 'Resolved';
+            if (filterType === 'critical') {
+                return ['Fire & Safety', 'Medical/Ambulance', 'Police'].includes(pin.department) ||
+                    pin.priority === 'Critical' ||
+                    pin.type === 'SOS Emergency';
+            }
+            return pin.type?.toLowerCase() === filterType;
+        });
+    }, [pins, filterType]);
 
+    // --- 2. Stats Calculation ---
     const criticalCount = pins.filter(p =>
         ['Fire & Safety', 'Medical/Ambulance', 'Police'].includes(p.department) ||
         p.priority === 'Critical' ||
@@ -134,33 +137,26 @@ const LiveMap = () => {
 
     const pendingCount = pins.filter(p => p.status === 'Pending').length;
     const resolvedCount = pins.filter(p => p.status === 'Resolved' || p.status === 'Accepted').length;
-=======
-    // Helper: Haversine distance in meters
-    const haversineDistance = (coords1, coords2) => {
-        function toRad(x) {
-            return (x * Math.PI) / 180;
-        }
 
+    // --- 3. Clustering Helper: Haversine distance ---
+    const haversineDistance = (coords1, coords2) => {
+        function toRad(x) { return (x * Math.PI) / 180; }
         const R = 6371e3; // Earth radius in meters
         const dLat = toRad(coords2.lat - coords1.lat);
         const dLon = toRad(coords2.lng - coords1.lng);
         const lat1 = toRad(coords1.lat);
         const lat2 = toRad(coords2.lat);
-
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
         return R * c;
     };
 
-    // Clustering Logic
+    // --- 4. Clustering Logic (Applied on Filtered Pins) ---
     const clusters = React.useMemo(() => {
         const clustered = [];
         const visited = new Set();
-        // Filter out resolved issues before clustering
-        const activePins = pins.filter(pin => pin.status !== 'Resolved');
+        // Use filteredPins so clustering reacts to filters
+        const activePins = filteredPins;
 
         activePins.forEach((pin) => {
             if (visited.has(pin.id)) return;
@@ -188,8 +184,7 @@ const LiveMap = () => {
         });
 
         return clustered;
-    }, [pins]);
->>>>>>> pshx09
+    }, [filteredPins]);
 
     return (
         <CivicLayout noPadding>
@@ -220,24 +215,6 @@ const LiveMap = () => {
                             title="You are here"
                         />
 
-<<<<<<< HEAD
-                        {/* Incident Markers */}
-                        {filteredPins.map(pin => {
-                            const isCritical =
-                                ['Fire & Safety', 'Medical/Ambulance', 'Police'].includes(pin.department) ||
-                                pin.priority === 'Critical' ||
-                                pin.type === 'SOS Emergency';
-
-                            let iconEmoji = '🚩';
-                            if (pin.type?.toLowerCase().includes('pothole')) iconEmoji = '🚧';
-                            else if (pin.type?.toLowerCase().includes('garbage')) iconEmoji = '🗑️';
-                            else if (pin.type?.toLowerCase().includes('light')) iconEmoji = '💡';
-                            else if (pin.type?.toLowerCase().includes('water')) iconEmoji = '💧';
-                            else if (pin.type?.toLowerCase().includes('fire')) iconEmoji = '🔥';
-                            else if (pin.type?.toLowerCase().includes('traffic')) iconEmoji = '🚦';
-                            else if (pin.type?.toLowerCase().includes('sos')) iconEmoji = '🚨';
-
-=======
                         {/* Incident Markers & Clusters */}
                         {clusters.map((cluster, index) => {
                             const isCluster = cluster.length > 1;
@@ -266,8 +243,7 @@ const LiveMap = () => {
                                 );
                             }
 
-                            // Single Pin Rendering (Existing Logic)
-                            // Enhanced Critical Check including explicit SOS type
+                            // Single Pin Rendering
                             const isCritical =
                                 ['Fire & Safety', 'Medical/Ambulance', 'Police'].includes(pin.department) ||
                                 pin.priority === 'Critical' ||
@@ -281,9 +257,8 @@ const LiveMap = () => {
                             else if (pin.type?.toLowerCase().includes('water')) iconEmoji = '💧';
                             else if (pin.type?.toLowerCase().includes('fire')) iconEmoji = '🔥';
                             else if (pin.type?.toLowerCase().includes('traffic')) iconEmoji = '🚦';
-                            else if (pin.type?.toLowerCase().includes('sos')) iconEmoji = '🚨'; // Fallback SOS icon
+                            else if (pin.type?.toLowerCase().includes('sos')) iconEmoji = '🚨';
 
->>>>>>> pshx09
                             if (isCritical) {
                                 return (
                                     <OverlayView
@@ -292,50 +267,27 @@ const LiveMap = () => {
                                         mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
                                         getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -height - 10 })}
                                     >
-<<<<<<< HEAD
-                                        <div className="relative group">
-                                            <div
-                                                className="relative flex items-center justify-center w-16 h-16 cursor-pointer z-50"
-                                                onClick={() => setSelectedPin(pin)}
-                                            >
-                                                <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping"></span>
-                                                <div className="relative w-12 h-12 bg-red-600 rounded-full shadow-xl flex items-center justify-center border-4 border-white z-10 text-white font-bold text-xs">
-                                                    SOS
-                                                </div>
+                                        <div
+                                            className="relative flex items-center justify-center w-16 h-16 cursor-pointer group z-50 hover:z-[60]"
+                                            onClick={() => setSelectedPin(pin)}
+                                        >
+                                            <span className="absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-75 animate-ping"></span>
+                                            <span className="absolute inline-flex h-10 w-10 rounded-full bg-red-500 opacity-40 animate-pulse"></span>
+                                            <div className="relative w-12 h-12 bg-red-600 rounded-full shadow-xl flex items-center justify-center border-4 border-white z-10 text-white font-bold text-sm tracking-tighter">
+                                                SOS
                                             </div>
-
-                                            {/* Hover Tooltip */}
+                                            {/* Hover Tooltip for Critical */}
                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[70]">
                                                 <div className="bg-white dark:bg-slate-800 rounded-lg p-3 shadow-xl border border-slate-200 dark:border-slate-700 min-w-[200px]">
                                                     <div className="flex items-center gap-2 mb-2">
-                                                        <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                                                            SOS
-                                                        </div>
+                                                        <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">SOS</div>
                                                         <div className="flex-1">
                                                             <h4 className="text-slate-900 dark:text-white font-bold text-sm capitalize truncate">{pin.type || 'Emergency'}</h4>
                                                             <p className="text-red-600 dark:text-red-400 text-xs font-semibold">CRITICAL ALERT</p>
                                                         </div>
                                                     </div>
                                                     <p className="text-slate-600 dark:text-slate-300 text-xs mb-2 line-clamp-2">{pin.location?.address || 'Location N/A'}</p>
-                                                    <div className="flex gap-1 flex-wrap">
-                                                        <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded text-xs font-semibold">
-                                                            {pin.status || 'Active'}
-                                                        </span>
-                                                    </div>
                                                 </div>
-=======
-                                        <div
-                                            className="relative flex items-center justify-center w-16 h-16 cursor-pointer group z-50 hover:z-[60]"
-                                            onClick={() => setSelectedPin(pin)}
-                                        >
-                                            {/* Blinking Ring for SOS/Critical */}
-                                            <span className="absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-75 animate-ping"></span>
-                                            <span className="absolute inline-flex h-10 w-10 rounded-full bg-red-500 opacity-40 animate-pulse"></span>
-
-                                            {/* Core Icon */}
-                                            <div className="relative w-12 h-12 bg-red-600 rounded-full shadow-xl flex items-center justify-center border-4 border-white z-10 text-white font-bold text-sm tracking-tighter">
-                                                SOS
->>>>>>> pshx09
                                             </div>
                                         </div>
                                     </OverlayView>
@@ -347,52 +299,28 @@ const LiveMap = () => {
                                     key={pin.id}
                                     position={{ lat: parseFloat(pin.location.lat), lng: parseFloat(pin.location.lng) }}
                                     mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-<<<<<<< HEAD
-                                    getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -height - 10 })}
-                                >
-                                    <div className="relative group">
-                                        <div
-                                            className="relative flex flex-col items-center justify-center cursor-pointer hover:scale-125 transition-transform z-40"
-                                            onClick={() => setSelectedPin(pin)}
-                                        >
-                                            <div className="text-3xl drop-shadow-xl">
-                                                {iconEmoji}
-                                            </div>
-                                            <div className="w-2 h-2 bg-black/40 rounded-full blur-sm mt-[-4px]"></div>
-                                        </div>
-
-                                        {/* Hover Tooltip */}
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[70]">
-                                            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 shadow-xl border border-slate-200 dark:border-slate-700 min-w-[200px]">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-lg">
-                                                        {iconEmoji}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h4 className="text-slate-900 dark:text-white font-bold text-sm capitalize truncate">{pin.type || 'Issue'}</h4>
-                                                        <p className="text-slate-600 dark:text-slate-400 text-xs">
-                                                            {new Date(pin.timestamp).toLocaleDateString()}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <p className="text-slate-600 dark:text-slate-300 text-xs mb-2 line-clamp-2">{pin.location?.address || 'Location N/A'}</p>
-                                                <div className="flex gap-1 flex-wrap">
-                                                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded text-xs font-semibold">
-                                                        {pin.status || 'Active'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-=======
                                     getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -(height / 2) })}
                                 >
                                     <div
-                                        className="relative flex flex-col items-center justify-center cursor-pointer hover:scale-110 transition-transform hover:z-40"
+                                        className="relative flex flex-col items-center justify-center cursor-pointer hover:scale-110 transition-transform hover:z-40 group"
                                         onClick={() => setSelectedPin(pin)}
                                     >
                                         <div className="text-3xl drop-shadow-md filter">{iconEmoji}</div>
                                         <div className="w-2 h-2 bg-black/30 rounded-full blur-[1px] mt-[-2px]"></div>
->>>>>>> pshx09
+
+                                        {/* Hover Tooltip for Normal */}
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[70]">
+                                            <div className="bg-white dark:bg-slate-800 rounded-lg p-3 shadow-xl border border-slate-200 dark:border-slate-700 min-w-[200px]">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-lg">{iconEmoji}</div>
+                                                    <div className="flex-1">
+                                                        <h4 className="text-slate-900 dark:text-white font-bold text-sm capitalize truncate">{pin.type || 'Issue'}</h4>
+                                                        <p className="text-slate-600 dark:text-slate-400 text-xs">{new Date(pin.timestamp).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                                <p className="text-slate-600 dark:text-slate-300 text-xs mb-2 line-clamp-2">{pin.location?.address || 'Location N/A'}</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </OverlayView>
                             );

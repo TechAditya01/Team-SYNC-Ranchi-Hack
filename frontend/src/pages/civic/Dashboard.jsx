@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Camera, Map, AlertTriangle, TrendingUp, Award, Users, Activity, MapPin, Clock, CheckCircle, XCircle, FileText, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CivicLayout from './CivicLayout';
+import AlertBanner from '../../components/AlertBanner';
 import { getDatabase, ref, onValue } from "firebase/database";
 import { auth } from '../../services/firebase';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -131,6 +132,9 @@ const Dashboard = () => {
                     Track your civic impact and community progress
                 </p>
             </div>
+
+            {/* Alert Banner */}
+            <AlertBanner />
 
             {/* Stats Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
