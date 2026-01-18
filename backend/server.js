@@ -1,5 +1,29 @@
 const express = require('express');
 require('dotenv').config(); // Load env vars immediately
+const fs = require('fs');
+const path = require('path');
+
+// --- CRITICAL FIX FOR VERTEX AI ON RENDER ---
+// Vertex AI needs a physical credential file. We create it from the ENV variable.
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+        const credPath = path.resolve(__dirname, 'google-credentials.json');
+
+        // Handle if it's a stringified JSON or already an object (rare in env)
+        let credContent = process.env.FIREBASE_SERVICE_ACCOUNT;
+        if (typeof credContent !== 'string') {
+            credContent = JSON.stringify(credContent);
+        }
+
+        fs.writeFileSync(credPath, credContent);
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = credPath;
+        console.log(`✅ [AUTH] Created Google Credentials file at: ${credPath}`);
+    } catch (err) {
+        console.error("❌ [AUTH] Failed to create Google Credentials file:", err);
+    }
+} else {
+    console.warn("⚠️ [AUTH] FIREBASE_SERVICE_ACCOUNT env var is missing! Vertex AI might fail.");
+}
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const axios = require('axios');
@@ -29,7 +53,7 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
 }
 
 // Middleware
-app.use(cors()); 
+app.use(cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(bodyParser.json({ limit: '10mb' }));
