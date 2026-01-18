@@ -36,7 +36,7 @@ const { db } = require('./config/firebase');
 const app = express();
 const PORT = process.env.PORT || 5001;
 const WHAPI_TOKEN = process.env.WHAPI_TOKEN;
-const path = require('path');
+
 
 // --- 0. FIX GOOGLE CREDENTIALS PATH ---
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
