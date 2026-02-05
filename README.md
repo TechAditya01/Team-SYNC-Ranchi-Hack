@@ -75,7 +75,7 @@ Create a `.env` file in both `frontend` and `backend` using the provided `.env.s
 - [x] WhatsApp Alert Broadcasting
 
 ---
-**Made by Team SYNC !
+
 
 
 
